@@ -1,0 +1,70 @@
+services:
+  api-gateway:
+    build: ./services/api-gateway
+    env_file: ${ENV_FILE:-.env}
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; exit(0) if urllib.request.urlopen('http://localhost:8000/health').status==200 else exit(1)"]
+      interval: 30s
+      retries: 3
+      start_period: 10s
+  
+  auth-service:
+    build: ./services/auth-service
+    env_file: ${ENV_FILE:-.env}
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; exit(0) if urllib.request.urlopen('http://localhost:8001/health').status==200 else exit(1)"]
+      interval: 30s
+      retries: 3
+      start_period: 10s
+
+  call-service:
+    build: ./services/call-service
+    env_file: ${ENV_FILE:-.env}
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; exit(0) if urllib.request.urlopen('http://localhost:8002/health').status==200 else exit(1)"]
+      interval: 30s
+      retries: 3
+      start_period: 10s
+
+  device-service:
+    build: ./services/device-service
+    env_file: ${ENV_FILE:-.env}
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; exit(0) if urllib.request.urlopen('http://localhost:8003/health').status==200 else exit(1)"]
+      interval: 30s
+      retries: 3
+      start_period: 10s
+
+  notification-service:
+    build: ./services/notification-service
+    env_file: ${ENV_FILE:-.env}
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; exit(0) if urllib.request.urlopen('http://localhost:8004/health').status==200 else exit(1)"]
+      interval: 30s
+      retries: 3
+      start_period: 10s
+
+  register-service:
+    build: ./services/register-service
+    env_file: ${ENV_FILE:-.env}
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; exit(0) if urllib.request.urlopen('http://localhost:8005/health').status==200 else exit(1)"]
+      interval: 30s
+      retries: 3
+      start_period: 10s
+
+  telemetry-service:
+    build: ./services/telemetry-service
+    env_file: ${ENV_FILE:-.env}
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; exit(0) if urllib.request.urlopen('http://localhost:8006/health').status==200 else exit(1)"]
+      interval: 30s
+      retries: 3
+      start_period: 10s
