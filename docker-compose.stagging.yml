@@ -1,0 +1,23 @@
+services:
+  api-gateway:
+    ports:
+      - "8081:8000"
+    restart: unless-stopped
+  
+  auth-service:
+    restart: unless-stopped
+
+  call-service:
+    restart: unless-stopped
+
+  device-service:
+    restart: unless-stopped
+
+  notification-service:
+    restart: unless-stopped
+
+  register-service:
+    restart: unless-stopped
+
+  telemetry-service:
+    restart: unless-stopped
