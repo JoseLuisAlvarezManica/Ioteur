@@ -7,4 +7,5 @@ class Settings(BaseSettings):
 
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO").upper()
 
+
 settings = Settings()

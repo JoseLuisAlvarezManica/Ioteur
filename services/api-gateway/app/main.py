@@ -1,7 +1,6 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, status, Depends
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 
 import logging
@@ -14,6 +13,7 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -32,11 +32,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.get("/", tags=["root"])
 async def root():
     return {"message": "API GATEWAY"}
 
-#Generico hay que modificar segun el servicio
+
+# Generico hay que modificar segun el servicio
 @app.get("/health", tags=["health"], status_code=status.HTTP_200_OK)
 async def health():
     return {"status": "healthy", "service": "api-gateway"}
