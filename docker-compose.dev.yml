@@ -2,7 +2,7 @@ services:
   postgres-auth:
     ports:
       - "5435:5432"
-  redis_auth:
+  redis-auth:
     ports:
       - "6379:6379"
   api-gateway:
