@@ -65,17 +65,27 @@ async def root():
     return {"message": "Auth Service"}
 
 
-# Generico hay que modificar segun el servicio
 @app.get("/health", tags=["health"], status_code=status.HTTP_200_OK)
 async def health() -> JSONResponse:
+    from .redis_client import get_redis
+
     checks: dict[str, str] = {}
 
+    # Postgres check
     try:
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
         checks["postgres"] = "ok"
     except Exception as exc:
         checks["postgres"] = f"error: {exc}"
+
+    # Redis check
+    try:
+        redis = get_redis()
+        pong = await redis.ping()
+        checks["redis"] = "ok" if pong else "error: no pong"
+    except Exception as exc:
+        checks["redis"] = f"error: {exc}"
 
     all_ok = all(v == "ok" for v in checks.values())
     http_status = status.HTTP_200_OK if all_ok else status.HTTP_503_SERVICE_UNAVAILABLE

@@ -25,9 +25,10 @@ jobs:
             echo "POSTGRES_AUTH_PASSWORD=${{ secrets.POSTGRES_AUTH_PASSWORD }}"
             echo "POSTGRES_AUTH_DB=${{ secrets.POSTGRES_AUTH_DB }}"
             echo "POSTGRES_AUTH_DATABASE_URL=${{ secrets.POSTGRES_AUTH_DATABASE_URL }}"
-            echo "REDIS_AUTH_URL=redis://redis_auth:6379/0"
+            echo "REDIS_AUTH_URL=redis://redis-auth:6379/0"
             echo "ACCESS_TOKEN_EXPIRE_MINUTES=15"
             echo "REFRESH_TOKEN_EXPIRE_DAYS=7"
+            echo "AUTH_SERVICE_URL=http://auth-service:8001"
           } > .env
 
           printf 'PRIVATE_KEY=%s\n' "${{ secrets.PRIVATE_KEY }}" >> .env
@@ -39,8 +40,33 @@ jobs:
       - name: Install jq
         run: sudo apt-get install -y jq
 
+      - name: Wait for auth-service to be healthy
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8001/health > /dev/null; then
+              echo "auth-service is up"
+              break
+            fi
+            echo "Waiting for auth-service... ($i/30)"
+            sleep 3
+          done
+
       - name: Run auth curl tests
         run: bash .github/workflows/curl_tests/auth_curl_tests.sh
+
+      - name: Wait for api-gateway to be healthy
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8000/health > /dev/null; then
+              echo "api-gateway is up"
+              break
+            fi
+            echo "Waiting for api-gateway... ($i/30)"
+            sleep 3
+          done
+
+      - name: Run gateway curl tests
+        run: bash .github/workflows/curl_tests/gateway_curl_tests.sh
 
       - name: Tear down services
         if: always()
