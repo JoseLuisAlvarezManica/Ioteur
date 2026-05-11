@@ -1,4 +1,26 @@
 services:
+
+  postgres-auth:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_AUTH_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_AUTH_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_AUTH_DB}
+    volumes:
+      - pg_auth_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_AUTH_USER} -d ${POSTGRES_AUTH_DB}"]
+      interval: 5s
+      retries: 5
+  redis_auth:
+    image: redis:7-alpine
+    volumes:
+      - redis_auth_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 5
+
   api-gateway:
     build: ./services/api-gateway
     env_file: ${ENV_FILE:-.env}
@@ -13,6 +35,11 @@ services:
     build: ./services/auth-service
     env_file: ${ENV_FILE:-.env}
     restart: on-failure
+    depends_on:
+      redis_auth:
+        condition: service_healthy
+      postgres-auth:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; exit(0) if urllib.request.urlopen('http://localhost:8001/health').status==200 else exit(1)"]
       interval: 30s
@@ -68,3 +95,7 @@ services:
       interval: 30s
       retries: 3
       start_period: 10s
+
+volumes:
+  pg_auth_data:
+  redis_auth_data:

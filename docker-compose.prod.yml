@@ -1,4 +1,8 @@
 services:
+  postgres-auth:
+    restart: always
+  redis-auth:
+    restart: always
   api-gateway:
     ports:
       - "80:8000"

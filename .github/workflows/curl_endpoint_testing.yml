@@ -1,0 +1,47 @@
+name: Curl — Integration Tests
+
+on:
+  push:
+    branches: ["main", "develop"]
+  pull_request:
+    branches: ["main", "develop"]
+
+env:
+  AUTH_BASE_URL: http://localhost:8001/auth
+
+jobs:
+  curl-integration:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create .env file from secrets
+        run: |
+          {
+            echo "LOG_LEVEL=INFO"
+            echo "POSTGRES_AUTH_USER=${{ secrets.POSTGRES_AUTH_USER }}"
+            echo "POSTGRES_AUTH_PASSWORD=${{ secrets.POSTGRES_AUTH_PASSWORD }}"
+            echo "POSTGRES_AUTH_DB=${{ secrets.POSTGRES_AUTH_DB }}"
+            echo "POSTGRES_AUTH_DATABASE_URL=${{ secrets.POSTGRES_AUTH_DATABASE_URL }}"
+            echo "REDIS_AUTH_URL=redis://redis_auth:6379/0"
+            echo "ACCESS_TOKEN_EXPIRE_MINUTES=15"
+            echo "REFRESH_TOKEN_EXPIRE_DAYS=7"
+          } > .env
+
+          printf 'PRIVATE_KEY=%s\n' "${{ secrets.PRIVATE_KEY }}" >> .env
+          printf 'PUBLIC_KEY=%s\n' "${{ secrets.PUBLIC_KEY }}" >> .env
+
+      - name: Start services
+        run: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+
+      - name: Install jq
+        run: sudo apt-get install -y jq
+
+      - name: Run auth curl tests
+        run: bash .github/workflows/curl_tests/auth_curl_tests.sh
+
+      - name: Tear down services
+        if: always()
+        run: docker compose -f docker-compose.yml down -v
