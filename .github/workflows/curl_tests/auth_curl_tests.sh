@@ -245,10 +245,42 @@ run_test "refresh_revoked" 401 \
   -H "X-Request-Id: req-refresh-003" \
 
 # =============================================================================
+
+# =============================================================================
+# 14. UPDATE USER — PUT /auth/user/{user_id}
+# =============================================================================
+hdr "PUT /auth/user/{user_id} — Update user (no token)"
+
+# Usar el usuario creado en signup_ok (John Doe). Obtener su id vía endpoint interno
+USER_ID=""
+USER_ID=$(curl -s -X GET "$BASE_URL/user/by-email/john@example.com" | jq -r '.id')
+
+if [ -z "$USER_ID" ] || [ "$USER_ID" = "null" ]; then
+  echo -e "${RED}✘ FAIL${NC}  [get_user_id] — could not get user id for update/delete tests"
+  FAILURES=$((FAILURES + 1))
+else
+  run_test "update_user_ok" 200 \
+    -X PUT "$BASE_URL/user/$USER_ID" \
+    -H "Content-Type: application/json" \
+    -d '{"name":"John Updated","email":"john.updated@example.com","password":"NewPass123!","role":"user"}'
+fi
+
+# =============================================================================
+# 15. DELETE USER — DELETE /auth/user/{user_id}
+# =============================================================================
+hdr "DELETE /auth/user/{user_id} — Delete user (no token)"
+if [ -z "$USER_ID" ] || [ "$USER_ID" = "null" ]; then
+  echo -e "${RED}✘ FAIL${NC}  [get_user_id] — could not get user id for delete test"
+  FAILURES=$((FAILURES + 1))
+else
+  run_test "delete_user_ok" 200 \
+    -X DELETE "$BASE_URL/user/$USER_ID"
+fi
+
 # Summary
 # =============================================================================
 sep
-TOTAL=13
+TOTAL=15
 PASSED=$((TOTAL - FAILURES))
 echo -e "\n${YELLOW}Results:${NC} ${GREEN}${PASSED} passed${NC} · ${RED}${FAILURES} failed${NC} · ${TOTAL} total\n"
 

@@ -1,4 +1,13 @@
+# Esquema para actualización de usuario (PUT)
+from typing import Optional
 from pydantic import BaseModel, EmailStr
+
+
+class UserUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    password: Optional[str] = None
+    role: Optional[str] = None
 
 
 class SignUp(BaseModel):
@@ -37,6 +46,13 @@ class TokenResponse(BaseModel):
 
 
 class MeResponse(BaseModel):
+    name: str
+    email: EmailStr
+    role: str
+
+
+class UserIdResponse(BaseModel):
+    id: str
     name: str
     email: EmailStr
     role: str

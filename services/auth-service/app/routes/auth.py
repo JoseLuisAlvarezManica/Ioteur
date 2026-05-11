@@ -14,7 +14,16 @@ from ..db import get_db
 from ..config import settings
 from ..redis_client import get_redis
 
-from ..schemas import SignUp, Login, TokenResponse, MeResponse
+from ..schemas import (
+    SignUp,
+    Login,
+    TokenResponse,
+    MeResponse,
+    UserUpdate,
+    UserIdResponse,
+)
+
+
 from ..models import Users
 
 from ..encryption import (
@@ -85,6 +94,8 @@ async def _create_user(form: SignUp, role: str, db: db_dependency):
     return {"detail": "User created successfully"}
 
 
+# Crud usuarios
+
 @router.post("/signup", status_code=status.HTTP_201_CREATED)
 async def signup(body: SignUp, db: db_dependency):
     await _create_user(body, "user", db)
@@ -93,6 +104,76 @@ async def signup(body: SignUp, db: db_dependency):
 @router.post("/admin/register", status_code=status.HTTP_201_CREATED)
 async def register_admin(body: SignUp, db: db_dependency):
     await _create_user(body, "admin", db)
+
+
+@router.get(
+    "/user/by-email/{email}",
+    status_code=status.HTTP_200_OK,
+    response_model=UserIdResponse,
+)
+async def get_user_by_email(email: str, db: db_dependency):
+    result = await db.execute(select(Users).where(Users.email == email))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+    return UserIdResponse(id=user.id, name=user.name, email=user.email, role=user.role)
+
+
+@router.put("/user/{user_id}", status_code=status.HTTP_200_OK)
+async def update_user(user_id: str, body: UserUpdate, db: db_dependency):
+    result = await db.execute(select(Users).where(Users.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+    if body.name is not None:
+        user.name = body.name
+    if body.email is not None:
+        user.email = body.email
+    if body.password is not None:
+        from ..encryption import hash_password
+
+        user.password_hash = hash_password(body.password)
+    if body.role is not None:
+        user.role = body.role
+    try:
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Could not update user",
+        )
+    return {"detail": "User updated successfully"}
+
+
+@router.delete("/user/{user_id}", status_code=status.HTTP_200_OK)
+async def delete_user(user_id: str, db: db_dependency):
+    """
+    Elimina un usuario por ID. No requiere autenticación, debe ser protegida por otro servicio.
+    """
+    result = await db.execute(select(Users).where(Users.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+    await db.delete(user)
+    try:
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Could not delete user",
+        )
+    return {"detail": "User deleted successfully"}
+
+
+# Autorización (manejo y uso de tokens)
 
 
 @router.post("/login", status_code=status.HTTP_200_OK, response_model=TokenResponse)
