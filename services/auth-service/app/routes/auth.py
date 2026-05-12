@@ -96,6 +96,7 @@ async def _create_user(form: SignUp, role: str, db: db_dependency):
 
 # Crud usuarios
 
+
 @router.post("/signup", status_code=status.HTTP_201_CREATED)
 async def signup(body: SignUp, db: db_dependency):
     await _create_user(body, "user", db)
