@@ -1,4 +1,4 @@
-name: Curl — Integration Tests
+name: Pytest — Integration Tests
 
 on:
   push:
@@ -7,10 +7,10 @@ on:
     branches: ["main", "develop"]
 
 env:
-  AUTH_BASE_URL: http://localhost:8001/auth
+  REGISTER_BASE_URL: http://localhost:8005
 
 jobs:
-  curl-integration:
+  pytest-integration:
     runs-on: ubuntu-latest
     environment: workflows
 
@@ -45,36 +45,34 @@ jobs:
       - name: Start services
         run: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 
-      - name: Install jq
-        run: sudo apt-get install -y jq
-
-      - name: Wait for auth-service to be healthy
+      - name: Wait for register-service to be healthy
         run: |
           for i in $(seq 1 30); do
-            if curl -sf http://localhost:8001/health > /dev/null; then
-              echo "auth-service is up"
+            if curl -sf http://localhost:8005/health > /dev/null; then
+              echo "register-service is up"
               break
             fi
-            echo "Waiting for auth-service... ($i/30)"
+            echo "Waiting for register-service... ($i/30)"
+            if [ "$i" -eq 30 ]; then
+              echo "register-service failed to start"
+              docker compose logs register-service
+              exit 1
+            fi
             sleep 3
           done
 
-      - name: Run auth curl tests
-        run: bash .github/workflows/curl_tests/auth_curl_tests.sh
+      - name: Install Python test dependencies
+        run: pip install --break-system-packages aio-pika httpx pytest pytest-asyncio
 
-      - name: Wait for api-gateway to be healthy
-        run: |
-          for i in $(seq 1 30); do
-            if curl -sf http://localhost:8000/health > /dev/null; then
-              echo "api-gateway is up"
-              break
-            fi
-            echo "Waiting for api-gateway... ($i/30)"
-            sleep 3
-          done
+      - name: Run register pytest tests
+        env:
+          RABBITMQ_URL: amqp://${{ secrets.RABBITMQ_USER }}:${{ secrets.RABBITMQ_PASSWORD }}@localhost:5672/
+          REGISTER_BASE_URL: http://localhost:8005
+        run: pytest .github/workflows/pytest_tests/test_register_flow.py -v
 
-      - name: Run gateway curl tests
-        run: bash .github/workflows/curl_tests/gateway_curl_tests.sh
+      - name: Print register-service logs on failure
+        if: failure()
+        run: docker compose logs register-service
 
       - name: Tear down services
         if: always()

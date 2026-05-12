@@ -9,9 +9,14 @@ services:
   postgres-device:
     ports:
       - "5436:5432"
+
   redis_device:
     ports:
       - "6380:6379"
+  
+  mongo_register:
+    ports:
+      - "27017:27017"
 
   rabbitmq:
     ports:
