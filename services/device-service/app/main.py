@@ -66,7 +66,7 @@ async def health():
     return {"status": "healthy", "service": "device-service"}
 
 
-EXCHANGE = "devices"
+EXCHANGE = "ioteur"
 QUEUE = "device.register.queue"
 ROUTING_KEY = "device.register"
 

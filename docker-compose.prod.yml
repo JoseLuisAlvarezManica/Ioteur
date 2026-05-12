@@ -6,7 +6,11 @@ services:
 
   postgres-device:
     restart: always
+
   redis-device:
+    restart: always
+
+  mongo_register:
     restart: always
 
   rabbitmq:
