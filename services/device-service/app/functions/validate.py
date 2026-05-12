@@ -7,20 +7,22 @@ from ..redis_client import get_redis
 def _device_redis_key(device_uuid: str) -> str:
     return f"device:{device_uuid}"
 
+
 async def validate_mac_address(mac_address: str) -> bool:
     async with AsyncSessionLocal() as session:
         result = await session.execute(
             "SELECT COUNT(*) FROM devices WHERE mac_address = :mac_address",
-            {"mac_address": mac_address}
+            {"mac_address": mac_address},
         )
         count = result.scalar_one()
         return count == 0
+
 
 async def validate_device_uuid(device_uuid: str) -> bool:
     async with AsyncSessionLocal() as session:
         result = await session.execute(
             "SELECT COUNT(*) FROM devices WHERE device_uuid = :device_uuid",
-            {"device_uuid": device_uuid}
+            {"device_uuid": device_uuid},
         )
         count = result.scalar_one()
 

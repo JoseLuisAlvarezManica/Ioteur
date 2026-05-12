@@ -20,6 +20,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 logging.getLogger("pika").setLevel(logging.WARNING)
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting up Device Service")
@@ -53,6 +54,7 @@ app.add_middleware(
 
 app.include_router(device_router)
 
+
 @app.get("/", tags=["root"])
 async def root():
     return {"message": "Device Service"}
@@ -63,6 +65,7 @@ async def root():
 async def health():
     return {"status": "healthy", "service": "device-service"}
 
+
 EXCHANGE = "devices"
 QUEUE = "device.register.queue"
 ROUTING_KEY = "device.register"
@@ -71,6 +74,7 @@ QUEUE_UPDATE = "device.update.queue"
 ROUTING_KEY_UPDATE = "device.update"
 
 _loop = None
+
 
 def on_device_register(channel, method, properties, body: bytes) -> None:
     global _loop
@@ -81,13 +85,14 @@ def on_device_register(channel, method, properties, body: bytes) -> None:
     event: Register_Device | None = None
     try:
         # Decode bytes to string with error handling
-        json_str = body.decode('utf-8', errors='replace').strip()
+        json_str = body.decode("utf-8", errors="replace").strip()
         event = Register_Device.model_validate_json(json_str)
         _loop.run_until_complete(register_device(event))
         channel.basic_ack(delivery_tag=method.delivery_tag)
     except Exception as exc:
         logger.error("Error procesando device.register: %s", exc, exc_info=True)
         channel.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+
 
 def on_device_update(channel, method, properties, body: bytes) -> None:
     global _loop
@@ -97,7 +102,7 @@ def on_device_update(channel, method, properties, body: bytes) -> None:
     event: Update_Device | None = None
     try:
         # Decode bytes to string with error handling
-        json_str = body.decode('utf-8', errors='replace').strip()
+        json_str = body.decode("utf-8", errors="replace").strip()
         event = Update_Device.model_validate_json(json_str)
         _loop.run_until_complete(update_device(event))
         channel.basic_ack(delivery_tag=method.delivery_tag)
@@ -105,11 +110,13 @@ def on_device_update(channel, method, properties, body: bytes) -> None:
         logger.error("Error procesando device.update: %s", exc, exc_info=True)
         channel.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
+
 def start_subscribers():
     """Start RabbitMQ subscribers in background thread"""
     start_subscriber(EXCHANGE, QUEUE, ROUTING_KEY, on_device_register)
     start_subscriber(EXCHANGE, QUEUE_UPDATE, ROUTING_KEY_UPDATE, on_device_update)
     threading.Event().wait()
+
 
 subscriber_thread = threading.Thread(target=start_subscribers, daemon=True)
 subscriber_thread.start()

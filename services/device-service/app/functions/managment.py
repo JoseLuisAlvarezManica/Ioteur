@@ -57,7 +57,7 @@ async def register_device(device_data: Register_Device) -> Device_Register_Respo
             device_name=new_device.device_name,
             mac_address=new_device.mac_address,
             report_interval=new_device.report_interval,
-            status=new_device.status
+            status=new_device.status,
         )
 
 
@@ -75,6 +75,5 @@ async def update_device(device_data: Update_Device) -> Device_Update_Response:
         await session.commit()
         await session.refresh(device)
         return Device_Update_Response(
-            device_uuid=device.device_uuid,
-            status=device.status
+            device_uuid=device.device_uuid, status=device.status
         )
