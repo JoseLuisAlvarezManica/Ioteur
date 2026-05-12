@@ -3,6 +3,16 @@ services:
     restart: always
   redis-auth:
     restart: always
+
+  postgres-device:
+    restart: always
+  redis-device:
+    restart: always
+
+  rabbitmq:
+    restart: always
+    image: rabbitmq:4-alpine
+
   api-gateway:
     ports:
       - "80:8000"
