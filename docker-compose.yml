@@ -21,6 +21,43 @@ services:
       interval: 5s
       retries: 5
 
+  postgres-device:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_DEVICE_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_DEVICE_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DEVICE_DB}
+    volumes:
+      - pg_device_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_DEVICE_USER} -d ${POSTGRES_DEVICE_DB}"]
+      interval: 5s
+      retries: 5
+  redis_device:
+    image: redis:7-alpine
+    volumes:
+      - redis_device_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    logging:
+      driver: "none"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq/
+      - rabbitmq_log:/var/log/rabbitmq/
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
+      interval: 5s
+      retries: 10
+      start_period: 20s
+
   api-gateway:
     build: ./services/api-gateway
     env_file: ${ENV_FILE:-.env}
@@ -65,6 +102,9 @@ services:
     build: ./services/device-service
     env_file: ${ENV_FILE:-.env}
     restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; exit(0) if urllib.request.urlopen('http://localhost:8003/health').status==200 else exit(1)"]
       interval: 10s
@@ -104,3 +144,7 @@ services:
 volumes:
   pg_auth_data:
   redis_auth_data:
+  pg_device_data:
+  redis_device_data:
+  rabbitmq_data:
+  rabbitmq_log:

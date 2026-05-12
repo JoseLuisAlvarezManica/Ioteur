@@ -5,6 +5,19 @@ services:
   redis-auth:
     ports:
       - "6379:6379"
+  
+  postgres-device:
+    ports:
+      - "5436:5432"
+  redis_device:
+    ports:
+      - "6380:6379"
+
+  rabbitmq:
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
   api-gateway:
     ports:
       - "8000:8000"
