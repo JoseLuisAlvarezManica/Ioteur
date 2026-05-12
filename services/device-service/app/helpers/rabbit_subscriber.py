@@ -4,10 +4,12 @@ from collections.abc import Callable
 import pika
 
 from ..config import settings
+
 logger = logging.getLogger(__name__)
 
 _thread: threading.Thread | None = None
 _connection: pika.BlockingConnection | None = None
+
 
 def _run_consumer(
     exchange: str,
