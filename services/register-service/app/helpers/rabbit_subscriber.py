@@ -1,45 +1,66 @@
 import logging
-from collections.abc import Callable, Awaitable
+import threading
+from collections.abc import Callable
 
-import aio_pika
-import aio_pika.abc
+import pika
 
 from ..config import settings
 
 logger = logging.getLogger(__name__)
 
-_connection: aio_pika.abc.AbstractRobustConnection | None = None
-_consumer_tag: str | None = None
+_thread: threading.Thread | None = None
+_connection: pika.BlockingConnection | None = None
 
 
-async def start_subscriber(
+def _run_consumer(
     exchange: str,
     queue: str,
     routing_key: str,
-    on_message: Callable[[aio_pika.abc.AbstractIncomingMessage], Awaitable[None]],
+    on_message: Callable[
+        [pika.adapters.blocking_connection.BlockingChannel, object, object, bytes], None
+    ],
 ) -> None:
-    global _connection, _consumer_tag
-    _connection = await aio_pika.connect_robust(settings.RABBITMQ_URL)
-    channel = await _connection.channel()
-    await channel.set_qos(prefetch_count=1)
-    exch = await channel.declare_exchange(
-        exchange, aio_pika.ExchangeType.DIRECT, durable=True
-    )
-    q = await channel.declare_queue(queue, durable=True)
-    await q.bind(exch, routing_key=routing_key)
-    _consumer_tag = await q.consume(on_message, no_ack=False)
+    global _connection
+    params = pika.URLParameters(settings.RABBITMQ_URL)
+    params.heartbeat = 0
+    _connection = pika.BlockingConnection(params)
+    channel = _connection.channel()
+    channel.exchange_declare(exchange=exchange, exchange_type="direct", durable=True)
+    channel.queue_declare(queue=queue, durable=True)
+    channel.queue_bind(queue=queue, exchange=exchange, routing_key=routing_key)
+    channel.basic_qos(prefetch_count=1)
+    channel.basic_consume(queue=queue, on_message_callback=on_message)
     logger.info(
         "Listening on routing key '%s' via queue '%s'",
         routing_key,
         queue,
         extra={"event": "rabbit.subscriber.started"},
     )
+    channel.start_consuming()
 
 
-async def stop_subscriber() -> None:
+def start_subscriber(
+    exchange: str,
+    queue: str,
+    routing_key: str,
+    on_message: Callable[
+        [pika.adapters.blocking_connection.BlockingChannel, object, object, bytes], None
+    ],
+) -> None:
+    global _thread
+    _thread = threading.Thread(
+        target=_run_consumer,
+        args=(exchange, queue, routing_key, on_message),
+        daemon=True,
+        name="rabbit-consumer",
+    )
+    _thread.start()
+
+
+def stop_subscriber() -> None:
     global _connection
     if _connection and not _connection.is_closed:
-        await _connection.close()
+        _connection.close()
         logger.info(
             "Subscriber disconnected.", extra={"event": "rabbit.subscriber.stopped"}
         )

@@ -2,8 +2,7 @@ import asyncio
 import uuid
 from contextlib import asynccontextmanager
 
-import aio_pika
-import aio_pika.abc
+import pika
 from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -23,38 +22,45 @@ logging.basicConfig(
     handlers=[handler],
 )
 
-for _noisy in ("pymongo", "aiormq", "aio_pika"):
+for _noisy in ("pymongo", "pika"):
     logging.getLogger(_noisy).setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
 
+_main_loop: asyncio.AbstractEventLoop | None = None
 
-async def _on_device_register(message: aio_pika.abc.AbstractIncomingMessage) -> None:
-    request_id = (message.headers or {}).get("request_id") or str(uuid.uuid4())
+
+def _on_device_register(channel, method, properties, body: bytes) -> None:
+    request_id = (properties.headers or {}).get("request_id") or str(uuid.uuid4())
     try:
-        await handle_device_register(message.body, request_id)
-        await message.ack()
+        future = asyncio.run_coroutine_threadsafe(
+            handle_device_register(body, request_id), _main_loop
+        )
+        future.result(timeout=30)
+        channel.basic_ack(delivery_tag=method.delivery_tag)
     except Exception as exc:
         logger.error(
             "Unhandled error processing device.register: %s",
             exc,
             extra={"event": "register.handler_error"},
         )
-        await message.nack(requeue=False)
+        channel.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global _main_loop
+    _main_loop = asyncio.get_event_loop()
     logger.info("Starting up Register Service", extra={"event": "startup"})
     await mongo_connect()
-    await start_subscriber(
+    start_subscriber(
         exchange="ioteur",
         queue="register.device.register",
         routing_key="device.register",
         on_message=_on_device_register,
     )
     yield
-    await stop_subscriber()
+    stop_subscriber()
     await mongo_disconnect()
     logger.info("Shutting down Register Service", extra={"event": "shutdown"})
 
@@ -94,13 +100,18 @@ async def health():
         )
         checks["mongo"] = "unhealthy"
 
-    # RabbitMQ connection check (async)
+    # RabbitMQ connection check
+    def _check_rabbitmq() -> None:
+        params = pika.URLParameters(settings.RABBITMQ_URL)
+        params.socket_timeout = 3
+        conn = pika.BlockingConnection(params)
+        conn.close()
+
     try:
-        conn = await asyncio.wait_for(
-            aio_pika.connect(settings.RABBITMQ_URL),
+        await asyncio.wait_for(
+            asyncio.get_event_loop().run_in_executor(None, _check_rabbitmq),
             timeout=3,
         )
-        await conn.close()
         checks["rabbitmq"] = "healthy"
     except Exception as e:
         logger.warning(
