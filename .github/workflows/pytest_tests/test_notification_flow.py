@@ -83,6 +83,7 @@ async def test_health():
 # system.error → system_notifications collection
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_system_error_persisted():
     request_id = str(uuid.uuid4())
