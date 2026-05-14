@@ -13,6 +13,9 @@ services:
   mongo_register:
     restart: always
 
+  mongo_notifications:
+    restart: always
+
   rabbitmq:
     restart: always
     image: rabbitmq:4-alpine

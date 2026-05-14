@@ -1,17 +1,17 @@
-name: Pytest — Integration Tests
+name: Pytest — MailJS Tests
 
 on:
+  workflow_dispatch:
   push:
-    branches: ["main", "develop"]
+    branches: ["main"]
   pull_request:
-    branches: ["main", "develop"]
+    branches: ["main"]
 
 env:
-  REGISTER_BASE_URL: http://localhost:8005
-  NOTIFICATION_BASE_URL: http://localhost:8006
+  NOTIFICATION_BASE_URL: http://localhost:8004
 
 jobs:
-  pytest-integration:
+  pytest-mailJS:
     runs-on: ubuntu-latest
     environment: workflows
 
@@ -55,26 +55,10 @@ jobs:
       - name: Start services
         run: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 
-      - name: Wait for register-service to be healthy
-        run: |
-          for i in $(seq 1 30); do
-            if curl -sf http://localhost:8005/health > /dev/null; then
-              echo "register-service is up"
-              break
-            fi
-            echo "Waiting for register-service... ($i/30)"
-            if [ "$i" -eq 30 ]; then
-              echo "register-service failed to start"
-              docker compose logs register-service
-              exit 1
-            fi
-            sleep 3
-          done
-
       - name: Wait for notification-service to be healthy
         run: |
           for i in $(seq 1 30); do
-            if curl -sf http://localhost:8006/health > /dev/null; then
+            if curl -sf http://localhost:8004/health > /dev/null; then
               echo "notification-service is up"
               break
             fi
@@ -87,26 +71,24 @@ jobs:
             sleep 3
           done
 
-      - name: Install Python test dependencies
-        run: pip install --break-system-packages aio-pika httpx motor pytest pytest-asyncio
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
-      - name: Run register pytest tests
+      - name: Install test dependencies
+        run: pip install pytest pytest-asyncio aio-pika motor
+
+      - name: Run MailJS pytest tests
         env:
           RABBITMQ_URL: amqp://${{ secrets.RABBITMQ_USER }}:${{ secrets.RABBITMQ_PASSWORD }}@localhost:5672/
-          REGISTER_BASE_URL: http://localhost:8005
-        run: pytest .github/workflows/pytest_tests/test_register_flow.py -v
-
-      - name: Run notification system pytest tests
-        env:
-          RABBITMQ_URL: amqp://${{ secrets.RABBITMQ_USER }}:${{ secrets.RABBITMQ_PASSWORD }}@localhost:5672/
-          NOTIFICATION_BASE_URL: http://localhost:8006
           MONGO_NOTIFICATIONS_DB: ${{ secrets.MONGO_NOTIFICATIONS_DB }}
           MONGO_NOTIFICATIONS_URL: mongodb://${{ secrets.MONGO_NOTIFICATIONS_USER }}:${{ secrets.MONGO_NOTIFICATIONS_PASSWORD }}@localhost:27018/${{ secrets.MONGO_NOTIFICATIONS_DB }}?authSource=admin
-        run: pytest .github/workflows/pytest_tests/test_notification_flow.py -v
+        run: pytest .github/workflows/pytest_tests/test_notification_email_flow.py -v
 
-      - name: Print register-service logs on failure
+      - name: Print notification-service logs on failure
         if: failure()
-        run: docker compose logs register-service notification-service
+        run: docker compose logs notification-service
 
       - name: Tear down services
         if: always()

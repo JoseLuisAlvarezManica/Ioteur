@@ -3,7 +3,6 @@ Integration test: publishes a device.register message via aio-pika,
 waits for register-service to consume and persist it, then verifies
 the record via the HTTP endpoint.
 
-Services must be running before executing this test.
 """
 
 import asyncio
