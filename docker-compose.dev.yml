@@ -21,6 +21,10 @@ services:
   mongo_notifications:
     ports:
       - "27018:27017"
+      
+  mongo_telemetry:
+    ports:
+      - "27019:27017"
 
   rabbitmq:
     ports:

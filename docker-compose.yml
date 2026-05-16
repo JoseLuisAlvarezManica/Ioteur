@@ -79,6 +79,24 @@ services:
       retries: 5
       start_period: 10s
 
+  mongo_telemetry:
+    image: mongo:8.2.7-noble
+    command: ["mongod", "--quiet"]
+    logging:
+      driver: "none"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_TELEMETRY_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_TELEMETRY_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_TELEMETRY_DB}
+    volumes:
+      - mongo_telemetry_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   rabbitmq:
     image: rabbitmq:4-management-alpine
     logging:
@@ -182,6 +200,11 @@ services:
     build: ./services/telemetry-service
     env_file: ${ENV_FILE:-.env}
     restart: on-failure
+    depends_on:
+      mongo_telemetry:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; exit(0) if urllib.request.urlopen('http://localhost:8006/health').status==200 else exit(1)"]
       interval: 10s
@@ -195,5 +218,6 @@ volumes:
   redis_device_data:
   mongo_register_data:
   mongo_notifications_data:
+  mongo_telemetry_data:
   rabbitmq_data:
   rabbitmq_log:

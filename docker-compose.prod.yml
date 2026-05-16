@@ -16,6 +16,9 @@ services:
   mongo_notifications:
     restart: always
 
+  mongo_telemetry:
+    restart: always
+  
   rabbitmq:
     restart: always
     image: rabbitmq:4-alpine
