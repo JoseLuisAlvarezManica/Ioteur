@@ -55,7 +55,7 @@ services:
     volumes:
       - mongo_register_data:/data/db
     healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/27017' 2>/dev/null || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -73,7 +73,7 @@ services:
     volumes:
       - mongo_notifications_data:/data/db
     healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/27017' 2>/dev/null || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -91,7 +91,7 @@ services:
     volumes:
       - mongo_telemetry_data:/data/db
     healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/27017' 2>/dev/null || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -104,6 +104,7 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbit log [{console,[{level,warning}]}]"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq/
       - rabbitmq_log:/var/log/rabbitmq/
@@ -147,6 +148,11 @@ services:
     build: ./services/call-service
     env_file: ${ENV_FILE:-.env}
     restart: on-failure
+    depends_on:
+      redis_device:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; exit(0) if urllib.request.urlopen('http://localhost:8002/health').status==200 else exit(1)"]
       interval: 10s

@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import logging
 from .config import settings
 from .helpers.rabbit_subscriber import start_subscriber
+from .helpers.rabbit_publisher import publish_system_error
 from .functions.managment import register_device, update_device
 from .schemas import Register_Device, Update_Device
 from .db import init_db
@@ -88,6 +89,13 @@ def on_device_register(channel, method, properties, body: bytes) -> None:
         channel.basic_ack(delivery_tag=method.delivery_tag)
     except Exception as exc:
         logger.error("Error procesando device.register: %s", exc, exc_info=True)
+        asyncio.run_coroutine_threadsafe(
+            publish_system_error(
+                reason="device_register_failed",
+                message=f"Failed to process device.register: {exc}",
+            ),
+            _main_loop,
+        )
         channel.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
 
@@ -101,10 +109,16 @@ def on_device_update(channel, method, properties, body: bytes) -> None:
         channel.basic_ack(delivery_tag=method.delivery_tag)
     except Exception as exc:
         logger.error("Error procesando device.update: %s", exc, exc_info=True)
+        asyncio.run_coroutine_threadsafe(
+            publish_system_error(
+                reason="device_update_failed",
+                message=f"Failed to process device.update: {exc}",
+            ),
+            _main_loop,
+        )
         channel.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
 
 def start_subscribers() -> None:
-    """Start RabbitMQ subscribers in background threads."""
     start_subscriber(EXCHANGE, QUEUE, ROUTING_KEY, on_device_register)
     start_subscriber(EXCHANGE, QUEUE_UPDATE, ROUTING_KEY_UPDATE, on_device_update)

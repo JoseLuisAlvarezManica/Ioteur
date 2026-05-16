@@ -10,7 +10,7 @@ from .logging_config import JsonFormatter
 from .config import settings
 from .redis_client import init_redis, close_redis
 
-from .routes import auth
+from .routes import auth, call
 
 handler = logging.StreamHandler()
 handler.setFormatter(JsonFormatter())
@@ -43,6 +43,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="api-gateway", lifespan=lifespan)
 app.include_router(auth.router)
+app.include_router(call.router)
 
 app.add_middleware(
     CORSMiddleware,

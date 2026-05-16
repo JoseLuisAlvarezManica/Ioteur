@@ -1,6 +1,8 @@
 import asyncio
 import json
 import logging
+import uuid
+from datetime import datetime, timezone
 from functools import partial
 
 import pika
@@ -8,6 +10,9 @@ import pika
 from ..config import settings
 
 logger = logging.getLogger(__name__)
+
+_EXCHANGE = "ioteur"
+_SERVICE_NAME = "telemetry-service"
 
 
 def _blocking_publish(exchange: str, routing_key: str, payload: dict) -> None:
@@ -51,3 +56,28 @@ async def publish(exchange: str, routing_key: str, payload: dict) -> None:
             extra={"event": "rabbit.publish.error"},
         )
         raise
+
+
+async def publish_system_error(
+    reason: str,
+    message: str,
+    severity: str = "critical",
+    request_id: str | None = None,
+) -> None:
+    payload = {
+        "_id": str(uuid.uuid4()),
+        "request_id": request_id or str(uuid.uuid4()),
+        "service_name": _SERVICE_NAME,
+        "reason": reason,
+        "severity": severity,
+        "message": message,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    try:
+        await publish(_EXCHANGE, "system.error", payload)
+    except Exception as exc:
+        logger.error(
+            "Could not publish system.error: %s",
+            exc,
+            extra={"event": "system.error.publish_failed"},
+        )

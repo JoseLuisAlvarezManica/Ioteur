@@ -12,11 +12,11 @@ from ..config import settings
 logger = logging.getLogger(__name__)
 
 _EXCHANGE = "ioteur"
-_SERVICE_NAME = "register-service"
+_SERVICE_NAME = "device-service"
 
 
 def _blocking_publish(exchange: str, routing_key: str, payload: dict) -> None:
-    params = pika.URLParameters(settings.RABBITMQ_URL)
+    params = pika.URLParameters(settings.rabbitmq_url)
     conn = pika.BlockingConnection(params)
     try:
         channel = conn.channel()
@@ -29,7 +29,7 @@ def _blocking_publish(exchange: str, routing_key: str, payload: dict) -> None:
             body=json.dumps(payload).encode(),
             properties=pika.BasicProperties(
                 content_type="application/json",
-                delivery_mode=2,  # persistent
+                delivery_mode=2,
             ),
         )
         logger.info(
@@ -63,7 +63,7 @@ async def publish_system_error(
     severity: str = "critical",
     request_id: str | None = None,
 ) -> None:
-    """Publish a system.error notification to the notification service."""
+
     payload = {
         "_id": str(uuid.uuid4()),
         "request_id": request_id or str(uuid.uuid4()),

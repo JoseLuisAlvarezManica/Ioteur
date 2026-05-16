@@ -18,10 +18,6 @@ RETRY_DELAY = 1  # seconds between retries
 
 
 async def handle_device_register(body: bytes, request_id: str) -> None:
-    """
-    Parse the incoming device.register message, attempt to insert into MongoDB
-    up to MAX_RETRIES times. On exhaustion publish a system.error notification.
-    """
     try:
         data = json.loads(body)
     except json.JSONDecodeError as e:
