@@ -37,8 +37,9 @@ def _on_create_report(channel, method, properties, body: bytes) -> None:
         future = asyncio.run_coroutine_threadsafe(
             create_last_day_report(body, request_id), _main_loop
         )
-        report = future.result(timeout=30)
-        
+
+        future.result(timeout=30)
+
         # Send notification
         publish_future = asyncio.run_coroutine_threadsafe(
             publish(
@@ -47,13 +48,13 @@ def _on_create_report(channel, method, properties, body: bytes) -> None:
                 payload={
                     "request_id": request_id,
                     "message": "Report created successfully",
-                    "status": "success"
-                }
+                    "status": "success",
+                },
             ),
-            _main_loop
+            _main_loop,
         )
         publish_future.result(timeout=10)
-        
+
         channel.basic_ack(delivery_tag=method.delivery_tag)
     except Exception as exc:
         logger.error(
