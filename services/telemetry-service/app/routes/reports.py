@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from ..helpers.mongo import mongo_get_db
-from ..schemas import DailyReport, RegisterRecordResponse
+from ..schemas import DailyReport
 
 import logging
 

@@ -82,15 +82,12 @@ async def create_last_day_report(body: bytes, request_id: str) -> DailyReport | 
     last_exc: Exception | None = None
     for attempt in range(1, MAX_RETRIES + 1):
         try:
-            cursor = (
-                collection.find(
-                    {
-                        "device_id": device_id,
-                        "created_at": {"$gte": cutoff},
-                    }
-                )
-                .sort("created_at", -1)
-            )
+            cursor = collection.find(
+                {
+                    "device_id": device_id,
+                    "created_at": {"$gte": cutoff},
+                }
+            ).sort("created_at", -1)
             records = [
                 RegisterRecordResponse.model_validate(
                     {
@@ -109,9 +106,7 @@ async def create_last_day_report(body: bytes, request_id: str) -> DailyReport | 
                 async for doc in cursor
             ]
             metric_data = [
-                metric
-                for record in records
-                for metric in record.metric_data
+                metric for record in records for metric in record.metric_data
             ]
             report = DailyReport(
                 device_id=device_id,
@@ -200,8 +195,7 @@ async def create_last_day_report(body: bytes, request_id: str) -> DailyReport | 
         ),
     )
 
-    
-    
+
 async def _publish_error(
     request_id: str, reason: str, severity: str, message: str
 ) -> None:
