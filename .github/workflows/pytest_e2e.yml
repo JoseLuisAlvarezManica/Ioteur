@@ -1,16 +1,14 @@
-name: Curl — Integration Tests
+name: Pytest — E2E Tests
 
 on:
+  workflow_dispatch:
   push:
-    branches: ["main", "develop"]
+    branches: ["main"]
   pull_request:
-    branches: ["main", "develop"]
-
-env:
-  AUTH_BASE_URL: http://localhost:8001/auth
+    branches: ["main"]
 
 jobs:
-  curl-integration:
+  pytest-e2e:
     runs-on: ubuntu-latest
     environment: workflows
 
@@ -78,40 +76,23 @@ jobs:
           printf 'PRIVATE_KEY=%s\n' "${{ secrets.PRIVATE_KEY }}" >> .env
           printf 'PUBLIC_KEY=%s\n' "${{ secrets.PUBLIC_KEY }}" >> .env
 
-
       - name: Start services
-        run: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+        run: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build --wait
 
-      - name: Install jq
-        run: sudo apt-get install -y jq
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
-      - name: Wait for auth-service to be healthy
-        run: |
-          for i in $(seq 1 30); do
-            if curl -sf http://localhost:8001/health > /dev/null; then
-              echo "auth-service is up"
-              break
-            fi
-            echo "Waiting for auth-service... ($i/30)"
-            sleep 3
-          done
+      - name: Install test dependencies
+        run: pip install pytest requests
 
-      - name: Run auth curl tests
-        run: bash .github/workflows/curl_tests/auth_curl_tests.sh
+      - name: Run E2E pytest tests
+        run: pytest .github/workflows/pytest_tests/test_e2e.py -v -s
 
-      - name: Wait for api-gateway to be healthy
-        run: |
-          for i in $(seq 1 30); do
-            if curl -sf http://localhost:8000/health > /dev/null; then
-              echo "api-gateway is up"
-              break
-            fi
-            echo "Waiting for api-gateway... ($i/30)"
-            sleep 3
-          done
-
-      - name: Run gateway curl tests
-        run: bash .github/workflows/curl_tests/gateway_curl_tests.sh
+      - name: Print service logs on failure
+        if: failure()
+        run: docker compose logs api-gateway auth-service call-service device-service register-service telemetry-service
 
       - name: Tear down services
         if: always()

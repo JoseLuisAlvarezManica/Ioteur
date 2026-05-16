@@ -1,5 +1,5 @@
 # Esquema para actualización de usuario (PUT)
-from typing import Optional
+from typing import Any, Optional
 from pydantic import BaseModel, EmailStr
 
 
@@ -52,3 +52,33 @@ class UserIdResponse(BaseModel):
     name: str
     email: EmailStr
     role: str
+
+
+# --- Call Service ---
+
+
+class RegisterDevice(BaseModel):
+    user_id: str
+    device_name: str
+    mac_address: str
+    report_interval: int
+
+
+class UpdateDevice(BaseModel):
+    device_uuid: str
+    report_interval: int | None = None
+    status: str | None = None
+
+
+class RegisterReceived(BaseModel):
+    device_id: str
+    time_procesing: int
+    values: dict[str, Any]
+
+
+class SystemErrorPayload(BaseModel):
+    reason: str
+    message: str
+    severity: str = "critical"
+    request_id: str | None = None
+    service_name: str | None = None

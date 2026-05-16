@@ -2,12 +2,13 @@ import asyncio
 import json
 import logging
 import uuid
-from datetime import datetime, timedelta, timezone
+from collections import Counter
+from datetime import datetime, timezone
 
 from ..helpers.mongo import mongo_client_instance
 from ..helpers.rabbit_publisher import publish
 from ..config import settings
-from ..schemas import DailyReport, RegisterRecordResponse, SystemNotification
+from ..schemas import DailyReport, MetricData, SystemNotification
 
 logger = logging.getLogger(__name__)
 
@@ -17,12 +18,39 @@ MAX_RETRIES = 3
 RETRY_DELAY = 1  # seconds between retries
 
 
-async def create_last_day_report(body: bytes, request_id: str) -> DailyReport | None:
-    """
-    Parse the incoming rabbit payload, fetch telemetry docs for the given device
-    over the last 24 hours, and build a schema-backed daily report.
-    """
+def _compute_metrics(records: list[dict]) -> list[MetricData]:
+    """Aggregate per-metric statistics from raw register records."""
+    metric_values: dict[str, list[str]] = {}
+    for record in records:
+        for key, val in record.get("values", {}).items():
+            metric_values.setdefault(key, []).append(str(val))
 
+    metrics: list[MetricData] = []
+    for name, values in metric_values.items():
+        if not values:
+            continue
+        try:
+            floats = [float(v) for v in values]
+            first, last = floats[0], floats[-1]
+            pct_change = round((last - first) / first * 100, 2) if first != 0.0 else 0.0
+            top = str(max(floats))
+        except (ValueError, ZeroDivisionError):
+            pct_change = 0.0
+            top = values[0]
+        most_freq = Counter(values).most_common(1)[0][0]
+        metrics.append(
+            MetricData(
+                device_name=name,
+                value_list=values,
+                percentaje_change=pct_change,
+                top_value=top,
+                most_frequent_value=most_freq,
+            )
+        )
+    return metrics
+
+
+async def create_last_day_report(body: bytes, request_id: str) -> DailyReport | None:
     try:
         data = json.loads(body)
     except json.JSONDecodeError as exc:
@@ -37,7 +65,7 @@ async def create_last_day_report(body: bytes, request_id: str) -> DailyReport | 
             severity="critical",
             message=f"Could not parse telemetry report message: {exc}",
         )
-        return
+        return None
 
     device_id = (
         data.get("device_id")
@@ -46,6 +74,7 @@ async def create_last_day_report(body: bytes, request_id: str) -> DailyReport | 
         or data.get("deviceUuid")
     )
     user_uuid = data.get("user_uuid") or data.get("userUuid") or data.get("user_id")
+    records: list[dict] = data.get("records", [])
 
     if not device_id:
         logger.error(
@@ -58,7 +87,7 @@ async def create_last_day_report(body: bytes, request_id: str) -> DailyReport | 
             severity="warning",
             message="Telemetry report message did not include a device identifier.",
         )
-        return
+        return None
 
     client = mongo_client_instance()
     if client is None:
@@ -72,97 +101,31 @@ async def create_last_day_report(body: bytes, request_id: str) -> DailyReport | 
             severity="critical",
             message="Mongo client is not initialized.",
         )
-        return
+        return None
 
-    db = client[settings.MONGO_REGISTER_DB]
-    collection = db["telemetry"]
+    db = client[settings.MONGO_TELEMETRY_DB]
     report_collection = db["daily_reports"]
-    cutoff = datetime.now(timezone.utc) - timedelta(days=1)
+
+    metrics = _compute_metrics(records)
+    report = DailyReport(
+        device_id=device_id,
+        created_at=datetime.now(timezone.utc),
+        metric_data=metrics,
+    )
+    # Store with Python field names so GET queries by device_id work
+    report_payload = report.model_dump()
 
     last_exc: Exception | None = None
     for attempt in range(1, MAX_RETRIES + 1):
         try:
-            cursor = collection.find(
-                {
-                    "device_id": device_id,
-                    "created_at": {"$gte": cutoff},
-                }
-            ).sort("created_at", -1)
-            records = [
-                RegisterRecordResponse.model_validate(
-                    {
-                        "id": str(doc["_id"]),
-                        "device_id": doc.get("device_id")
-                        or doc.get("deviceId")
-                        or device_id,
-                        "created_at": doc.get("created_at")
-                        or doc.get("createdAt")
-                        or datetime.now(timezone.utc),
-                        "metric_data": doc.get("metric_data")
-                        or doc.get("metricData")
-                        or [],
-                    }
-                )
-                async for doc in cursor
-            ]
-            metric_data = [
-                metric for record in records for metric in record.metric_data
-            ]
-            report = DailyReport(
-                device_id=device_id,
-                created_at=datetime.now(timezone.utc),
-                metric_data=metric_data,
-            )
-
-            report_payload = report.model_dump(by_alias=True)
-            insert_exc: Exception | None = None
-            for insert_attempt in range(1, MAX_RETRIES + 1):
-                try:
-                    await report_collection.insert_one(report_payload)
-                    logger.info(
-                        "Stored daily report for device %s",
-                        device_id,
-                        extra={
-                            "event": "telemetry.report_stored",
-                            "device_id": device_id,
-                            "user_uuid": user_uuid,
-                        },
-                    )
-                    break
-                except Exception as exc:
-                    insert_exc = exc
-                    logger.warning(
-                        "Daily report insert attempt %d/%d failed: %s",
-                        insert_attempt,
-                        MAX_RETRIES,
-                        exc,
-                        extra={"event": "telemetry.report_insert_retry"},
-                    )
-                    if insert_attempt < MAX_RETRIES:
-                        await asyncio.sleep(RETRY_DELAY)
-            else:
-                logger.error(
-                    "All %d daily report insert attempts failed",
-                    MAX_RETRIES,
-                    extra={"event": "telemetry.report_insert_failed"},
-                )
-                await _publish_error(
-                    request_id=request_id,
-                    reason="mongo_insert_failed",
-                    severity="critical",
-                    message=(
-                        f"Failed to store daily report for device {device_id} after "
-                        f"{MAX_RETRIES} attempts: {insert_exc}"
-                    ),
-                )
-                return None
-
+            await report_collection.insert_one(report_payload)
             logger.info(
-                "Loaded %d telemetry documents for device %s",
-                len(records),
+                "Stored daily report for device %s (%d metrics, %d records)",
                 device_id,
+                len(metrics),
+                len(records),
                 extra={
-                    "event": "telemetry.report_loaded",
+                    "event": "telemetry.report_stored",
                     "device_id": device_id,
                     "user_uuid": user_uuid,
                 },
@@ -171,29 +134,30 @@ async def create_last_day_report(body: bytes, request_id: str) -> DailyReport | 
         except Exception as exc:
             last_exc = exc
             logger.warning(
-                "Telemetry report lookup attempt %d/%d failed: %s",
+                "Daily report insert attempt %d/%d failed: %s",
                 attempt,
                 MAX_RETRIES,
                 exc,
-                extra={"event": "telemetry.report_lookup_retry"},
+                extra={"event": "telemetry.report_insert_retry"},
             )
             if attempt < MAX_RETRIES:
                 await asyncio.sleep(RETRY_DELAY)
 
     logger.error(
-        "All %d telemetry report lookup attempts failed",
+        "All %d daily report insert attempts failed",
         MAX_RETRIES,
-        extra={"event": "telemetry.report_lookup_failed"},
+        extra={"event": "telemetry.report_insert_failed"},
     )
     await _publish_error(
         request_id=request_id,
-        reason="mongo_lookup_failed",
+        reason="mongo_insert_failed",
         severity="critical",
         message=(
-            f"Failed to load telemetry documents for device {device_id} after "
+            f"Failed to store daily report for device {device_id} after "
             f"{MAX_RETRIES} attempts: {last_exc}"
         ),
     )
+    return None
 
 
 async def _publish_error(

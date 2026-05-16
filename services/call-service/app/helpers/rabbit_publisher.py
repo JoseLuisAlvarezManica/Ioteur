@@ -12,7 +12,7 @@ from ..config import settings
 logger = logging.getLogger(__name__)
 
 _EXCHANGE = "ioteur"
-_SERVICE_NAME = "register-service"
+_SERVICE_NAME = "call-service"
 
 
 def _blocking_publish(exchange: str, routing_key: str, payload: dict) -> None:
@@ -62,12 +62,12 @@ async def publish_system_error(
     message: str,
     severity: str = "critical",
     request_id: str | None = None,
+    service_name: str | None = None,
 ) -> None:
-    """Publish a system.error notification to the notification service."""
     payload = {
         "_id": str(uuid.uuid4()),
         "request_id": request_id or str(uuid.uuid4()),
-        "service_name": _SERVICE_NAME,
+        "service_name": service_name or _SERVICE_NAME,
         "reason": reason,
         "severity": severity,
         "message": message,

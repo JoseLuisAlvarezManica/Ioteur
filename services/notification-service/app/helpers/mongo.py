@@ -16,7 +16,6 @@ def mongo_get_client() -> motor.motor_asyncio.AsyncIOMotorClient:
 
 
 def mongo_client_instance() -> motor.motor_asyncio.AsyncIOMotorClient:
-    """Return the live global client (set after mongo_connect())."""
     return client
 
 

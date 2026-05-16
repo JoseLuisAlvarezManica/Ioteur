@@ -11,6 +11,10 @@ class Settings(BaseSettings):
 
     AUTH_SERVICE_URL: str = "http://auth-service:8001"
 
+    CALL_SERVICE_URL: str = "http://call-service:8002"
+
+    INTERNAL_API_KEY: str
+
     PUBLIC_KEY: str
 
     @field_validator("PUBLIC_KEY", mode="before")

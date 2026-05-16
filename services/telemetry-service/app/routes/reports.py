@@ -39,7 +39,7 @@ async def get_reports(
         .skip(skip)
         .limit(limit)
     )
-    docs = [doc async for doc in cursor]
+    docs = [_serialize(doc) async for doc in cursor]
     return docs
 
 
@@ -68,5 +68,5 @@ async def get_reports_by_date(
         .skip(skip)
         .limit(limit)
     )
-    docs = [doc async for doc in cursor]
+    docs = [_serialize(doc) async for doc in cursor]
     return docs

@@ -10,7 +10,7 @@ client: motor.motor_asyncio.AsyncIOMotorClient = None
 
 def mongo_get_client() -> motor.motor_asyncio.AsyncIOMotorClient:
     return motor.motor_asyncio.AsyncIOMotorClient(
-        settings.MONGO_REGISTER_URL,
+        settings.MONGO_TELEMETRY_URL,
         serverSelectionTimeoutMS=5000,
     )
 
@@ -33,7 +33,7 @@ async def mongo_disconnect():
 
 
 async def mongo_get_db() -> AsyncGenerator[AsyncIOMotorDatabase, None]:
-    db = client[settings.MONGO_REGISTER_DB]
+    db = client[settings.MONGO_TELEMETRY_DB]
     try:
         yield db
     except Exception:

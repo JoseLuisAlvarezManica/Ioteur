@@ -5,8 +5,8 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     LOG_LEVEL: str
-    MONGO_REGISTER_URL: str
-    MONGO_REGISTER_DB: str
+    MONGO_TELEMETRY_URL: str
+    MONGO_TELEMETRY_DB: str
     RABBITMQ_URL: str
 
 

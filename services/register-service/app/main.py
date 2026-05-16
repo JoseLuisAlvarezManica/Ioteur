@@ -56,7 +56,7 @@ async def lifespan(app: FastAPI):
     start_subscriber(
         exchange="ioteur",
         queue="register.device.register",
-        routing_key="device.register",
+        routing_key="register.received",
         on_message=_on_device_register,
     )
     yield

@@ -12,7 +12,6 @@ ALGORITHM = "RS256"
 
 
 def _wrap_pem(pem: str, key_type: str) -> str:
-    """Asegura que la clave esté correctamente envuelta en encabezado y pie."""
     header = f"-----BEGIN {key_type}-----"
     footer = f"-----END {key_type}-----"
     pem = pem.strip().replace("\r", "")
