@@ -77,6 +77,18 @@ async def get_device_by_user(request: Request, user_id: str, client: call_dep):
         raise HTTPException(status_code=code, detail=data)
     return data
 
+@router.delete(
+    "/devices/{device_id}",
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(bearer_scheme)],
+)
+@must_be_logged_in
+async def delete_device(request: Request, device_id: str, client: call_dep):
+    code, data = await client.delete(f"/devices/{device_id}")
+    if code != status.HTTP_202_ACCEPTED:
+        raise HTTPException(status_code=code, detail=data)
+    return data
+
 
 # --- Registers ---
 

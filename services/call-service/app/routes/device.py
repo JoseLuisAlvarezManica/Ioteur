@@ -136,3 +136,29 @@ async def get_device_by_user(user_id: str):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error"
         )
+
+
+@device_router.delete("/{device_id}", status_code=status.HTTP_202_ACCEPTED)
+async def delete_device(device_id: str):
+    try:
+        await publish(EXCHANGE, "device.delete", {"device_uuid": device_id})
+        logger.info(
+            "Queued device.delete for device %s",
+            device_id,
+            extra={"event": "device.delete"},
+        )
+        return {"message": "device.delete event queued"}
+    except Exception as exc:
+        logger.error(
+            "Failed to publish device.delete: %s",
+            exc,
+            extra={"event": "device.delete.error"},
+        )
+        await publish_system_error(
+            reason="publish_failed",
+            message=f"Failed to publish device.delete for device {device_id}: {exc}",
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to queue event",
+        )

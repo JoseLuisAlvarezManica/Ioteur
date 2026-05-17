@@ -88,3 +88,15 @@ async def update_device(device_data: Update_Device) -> Device_Update_Response:
         return Device_Update_Response(
             device_uuid=device.device_uuid, status=device.status
         )
+
+async def delete_device(device_uuid: str) -> None:
+    async with AsyncSessionLocal() as session:
+        device = await session.get(Device, device_uuid)
+        if not device:
+            raise ValueError("Device not found")
+            
+        await session.delete(device)
+        await session.commit()
+        
+        redis_client = get_redis()
+        await redis_client.delete(_device_redis_key(device_uuid))

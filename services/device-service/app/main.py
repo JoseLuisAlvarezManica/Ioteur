@@ -78,6 +78,9 @@ ROUTING_KEY = "device.register"
 QUEUE_UPDATE = "device.update.queue"
 ROUTING_KEY_UPDATE = "device.update"
 
+QUEUE_DELETE = "device.delete.queue"
+ROUTING_KEY_DELETE = "device.delete"
+
 
 def on_device_register(channel, method, properties, body: bytes) -> None:
     event: Register_Device | None = None
@@ -118,7 +121,31 @@ def on_device_update(channel, method, properties, body: bytes) -> None:
         )
         channel.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
+def on_device_delete(channel, method, properties, body: bytes) -> None:
+    from .functions.managment import delete_device
+    import json
+    try:
+        json_str = body.decode("utf-8", errors="replace").strip()
+        data = json.loads(json_str)
+        device_uuid = data.get("device_uuid")
+        if not device_uuid:
+            raise ValueError("device_uuid must be provided")
+        
+        future = asyncio.run_coroutine_threadsafe(delete_device(device_uuid), _main_loop)
+        future.result(timeout=30)
+        channel.basic_ack(delivery_tag=method.delivery_tag)
+    except Exception as exc:
+        logger.error("Error procesando device.delete: %s", exc, exc_info=True)
+        asyncio.run_coroutine_threadsafe(
+            publish_system_error(
+                reason="device_delete_failed",
+                message=f"Failed to process device.delete: {exc}",
+            ),
+            _main_loop,
+        )
+        channel.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
 def start_subscribers() -> None:
     start_subscriber(EXCHANGE, QUEUE, ROUTING_KEY, on_device_register)
     start_subscriber(EXCHANGE, QUEUE_UPDATE, ROUTING_KEY_UPDATE, on_device_update)
+    start_subscriber(EXCHANGE, QUEUE_DELETE, ROUTING_KEY_DELETE, on_device_delete)
