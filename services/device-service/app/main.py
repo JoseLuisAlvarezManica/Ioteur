@@ -13,7 +13,9 @@ from .redis_client import init_redis, close_redis
 from .routes.device import device_router
 
 _handler = logging.StreamHandler()
-_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+_handler.setFormatter(
+    logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
+)
 _app_logger = logging.getLogger("app")
 _app_logger.setLevel(getattr(logging, settings.LOG_LEVEL, logging.INFO))
 _app_logger.addHandler(_handler)
