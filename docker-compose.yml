@@ -10,7 +10,7 @@ services:
       - pg_auth_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_AUTH_USER} -d ${POSTGRES_AUTH_DB}"]
-      interval: 5s
+      interval: 20s
       retries: 5
   redis-auth:
     image: redis:7-alpine
@@ -18,7 +18,7 @@ services:
       - redis_auth_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
+      interval: 20s
       retries: 5
 
   postgres-device:
@@ -31,7 +31,7 @@ services:
       - pg_device_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_DEVICE_USER} -d ${POSTGRES_DEVICE_DB}"]
-      interval: 5s
+      interval: 20s
       retries: 5
 
   redis_device:
@@ -40,7 +40,7 @@ services:
       - redis_device_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
+      interval: 20s
       retries: 5
   
   mongo_register:
@@ -56,7 +56,7 @@ services:
       - mongo_register_data:/data/db
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/27017' 2>/dev/null || exit 1"]
-      interval: 10s
+      interval: 20s
       timeout: 5s
       retries: 5
       start_period: 10s
@@ -74,7 +74,7 @@ services:
       - mongo_notifications_data:/data/db
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/27017' 2>/dev/null || exit 1"]
-      interval: 10s
+      interval: 20s
       timeout: 5s
       retries: 5
       start_period: 10s
@@ -92,7 +92,7 @@ services:
       - mongo_telemetry_data:/data/db
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/27017' 2>/dev/null || exit 1"]
-      interval: 10s
+      interval: 20s
       timeout: 5s
       retries: 5
       start_period: 10s
@@ -110,7 +110,7 @@ services:
       - rabbitmq_log:/var/log/rabbitmq/
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
-      interval: 5s
+      interval: 20s
       retries: 10
       start_period: 20s
 
@@ -125,7 +125,7 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
-      interval: 10s
+      interval: 20s
       retries: 10
       start_period: 10s
   
@@ -140,7 +140,7 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
-      interval: 10s
+      interval: 20s
       retries: 10
       start_period: 10s
 
@@ -155,7 +155,7 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; exit(0) if urllib.request.urlopen('http://localhost:8002/health').status==200 else exit(1)"]
-      interval: 10s
+      interval: 20s
       retries: 3
       start_period: 10s
 
@@ -168,7 +168,7 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; exit(0) if urllib.request.urlopen('http://localhost:8003/health').status==200 else exit(1)"]
-      interval: 10s
+      interval: 20s
       retries: 3
       start_period: 10s
 
@@ -183,7 +183,7 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; exit(0) if urllib.request.urlopen('http://localhost:8004/health').status==200 else exit(1)"]
-      interval: 10s
+      interval: 20s
       retries: 3
       start_period: 10s
 
@@ -198,7 +198,7 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; exit(0) if urllib.request.urlopen('http://localhost:8005/health').status==200 else exit(1)"]
-      interval: 10s
+      interval: 20s
       retries: 3
       start_period: 10s
 
@@ -213,7 +213,7 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; exit(0) if urllib.request.urlopen('http://localhost:8006/health').status==200 else exit(1)"]
-      interval: 10s
+      interval: 20s
       retries: 3
       start_period: 10s
 
