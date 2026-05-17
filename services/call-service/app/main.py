@@ -17,10 +17,10 @@ from .routes.system import system_router
 
 handler = logging.StreamHandler()
 handler.setFormatter(JsonFormatter())
-logging.basicConfig(
-    level=getattr(logging, settings.LOG_LEVEL, logging.INFO),
-    handlers=[handler],
-)
+_app_logger = logging.getLogger("app")
+_app_logger.setLevel(getattr(logging, settings.LOG_LEVEL, logging.INFO))
+_app_logger.addHandler(handler)
+_app_logger.propagate = False
 
 logging.getLogger("pika").setLevel(logging.WARNING)
 

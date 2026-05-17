@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 request_id_var: ContextVar[str] = ContextVar("request_id", default="-")
 
-SERVICE_NAME = "register-service"
+SERVICE_NAME = "telemetry-service"
 
 
 class JsonFormatter(logging.Formatter):

@@ -12,10 +12,12 @@ from .db import init_db
 from .redis_client import init_redis, close_redis
 from .routes.device import device_router
 
-logging.basicConfig(
-    level=getattr(logging, settings.LOG_LEVEL, logging.INFO),
-    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-)
+_handler = logging.StreamHandler()
+_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+_app_logger = logging.getLogger("app")
+_app_logger.setLevel(getattr(logging, settings.LOG_LEVEL, logging.INFO))
+_app_logger.addHandler(_handler)
+_app_logger.propagate = False
 
 logger = logging.getLogger(__name__)
 logging.getLogger("pika").setLevel(logging.WARNING)

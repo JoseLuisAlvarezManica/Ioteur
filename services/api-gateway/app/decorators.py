@@ -1,3 +1,4 @@
+import logging
 from functools import wraps
 
 from fastapi import HTTPException, Request, status
@@ -5,7 +6,11 @@ from fastapi.security import HTTPBearer
 from jose import jwt, JWTError
 
 from .config import settings
+from .logging_config import request_id_var
 from .redis_client import get_redis
+from .helpers.system_error import publish_system_error
+
+logger = logging.getLogger(__name__)
 
 
 ALGORITHM = "RS256"
@@ -64,22 +69,41 @@ def must_be_logged_in(route):
                 detail="El token no es válido",
             )
 
-        redis = get_redis()
-        is_revoked = await redis.get(f"blacklist:{token}")
-        if is_revoked:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="El token ha sido revocado",
-            )
-
-        refresh_token = request.headers.get("x-refresh-token")
-        if refresh_token:
-            is_refresh_revoked = await redis.get(f"blacklist:{refresh_token}")
-            if is_refresh_revoked:
+        try:
+            redis = get_redis()
+            is_revoked = await redis.get(f"blacklist:{token}")
+            if is_revoked:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="El refresh token ha sido revocado",
+                    detail="El token ha sido revocado",
                 )
+
+            refresh_token = request.headers.get("x-refresh-token")
+            if refresh_token:
+                is_refresh_revoked = await redis.get(f"blacklist:{refresh_token}")
+                if is_refresh_revoked:
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="El refresh token ha sido revocado",
+                    )
+        except HTTPException:
+            raise
+        except Exception as exc:
+            rid = request_id_var.get()
+            logger.error(
+                "Redis no disponible — no se puede verificar blacklist, rechazando petición",
+                extra={"event": "redis.connection_failed", "error": str(exc)},
+            )
+            await publish_system_error(
+                reason="redis_connection_failed",
+                message=f"Redis no disponible en api-gateway (must_be_logged_in): {exc}",
+                severity="critical",
+                request_id=rid if rid != "-" else None,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Servicio temporalmente no disponible. Intente más tarde.",
+            )
 
         return await route(*args, **kwargs)
 
@@ -127,22 +151,41 @@ def must_be_admin(route):
                 detail="El token no es válido",
             )
 
-        redis = get_redis()
-        is_revoked = await redis.get(f"blacklist:{token}")
-        if is_revoked:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="El token ha sido revocado",
-            )
-
-        refresh_token = request.headers.get("x-refresh-token")
-        if refresh_token:
-            is_refresh_revoked = await redis.get(f"blacklist:{refresh_token}")
-            if is_refresh_revoked:
+        try:
+            redis = get_redis()
+            is_revoked = await redis.get(f"blacklist:{token}")
+            if is_revoked:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="El refresh token ha sido revocado",
+                    detail="El token ha sido revocado",
                 )
+
+            refresh_token = request.headers.get("x-refresh-token")
+            if refresh_token:
+                is_refresh_revoked = await redis.get(f"blacklist:{refresh_token}")
+                if is_refresh_revoked:
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="El refresh token ha sido revocado",
+                    )
+        except HTTPException:
+            raise
+        except Exception as exc:
+            rid = request_id_var.get()
+            logger.error(
+                "Redis no disponible — no se puede verificar blacklist, rechazando petición",
+                extra={"event": "redis.connection_failed", "error": str(exc)},
+            )
+            await publish_system_error(
+                reason="redis_connection_failed",
+                message=f"Redis no disponible en api-gateway (must_be_admin): {exc}",
+                severity="critical",
+                request_id=rid if rid != "-" else None,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Servicio temporalmente no disponible. Intente más tarde.",
+            )
 
         if role != "admin":
             raise HTTPException(
@@ -154,4 +197,4 @@ def must_be_admin(route):
     return wrapper
 
 
-bearer_scheme = HTTPBearer()
+bearer_scheme = HTTPBearer(auto_error=False)
