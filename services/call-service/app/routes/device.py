@@ -136,6 +136,7 @@ async def get_device_by_user(user_id: str):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error"
         )
+<<<<<<< HEAD
 
 
 @device_router.delete("/{device_id}", status_code=status.HTTP_202_ACCEPTED)
@@ -162,3 +163,5 @@ async def delete_device(device_id: str):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to queue event",
         )
+=======
+>>>>>>> features/QA_and_Docs

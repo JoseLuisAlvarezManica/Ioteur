@@ -78,9 +78,12 @@ ROUTING_KEY = "device.register"
 QUEUE_UPDATE = "device.update.queue"
 ROUTING_KEY_UPDATE = "device.update"
 
+<<<<<<< HEAD
 QUEUE_DELETE = "device.delete.queue"
 ROUTING_KEY_DELETE = "device.delete"
 
+=======
+>>>>>>> features/QA_and_Docs
 
 def on_device_register(channel, method, properties, body: bytes) -> None:
     event: Register_Device | None = None
@@ -121,6 +124,7 @@ def on_device_update(channel, method, properties, body: bytes) -> None:
         )
         channel.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
+<<<<<<< HEAD
 def on_device_delete(channel, method, properties, body: bytes) -> None:
     from .functions.managment import delete_device
     import json
@@ -144,8 +148,13 @@ def on_device_delete(channel, method, properties, body: bytes) -> None:
             _main_loop,
         )
         channel.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+=======
+>>>>>>> features/QA_and_Docs
 
 def start_subscribers() -> None:
     start_subscriber(EXCHANGE, QUEUE, ROUTING_KEY, on_device_register)
     start_subscriber(EXCHANGE, QUEUE_UPDATE, ROUTING_KEY_UPDATE, on_device_update)
+<<<<<<< HEAD
     start_subscriber(EXCHANGE, QUEUE_DELETE, ROUTING_KEY_DELETE, on_device_delete)
+=======
+>>>>>>> features/QA_and_Docs
