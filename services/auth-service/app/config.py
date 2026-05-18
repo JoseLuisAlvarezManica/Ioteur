@@ -3,7 +3,6 @@ from pydantic import field_validator
 
 
 class Settings(BaseSettings):
-    # Pydantic carga todas las variables del entorno
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     LOG_LEVEL: str = "INFO"
@@ -11,6 +10,10 @@ class Settings(BaseSettings):
     POSTGRES_AUTH_DATABASE_URL: str
 
     REDIS_AUTH_URL: str = "redis://redis-auth:6379/0"
+
+    API_GATEWAY_URL: str = "http://api-gateway:8000"
+
+    INTERNAL_API_KEY: str
 
     PRIVATE_KEY: str
     PUBLIC_KEY: str

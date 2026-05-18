@@ -21,10 +21,6 @@ class Login(BaseModel):
     password: str
 
 
-class Logout(BaseModel):
-    pass
-
-
 class User(BaseModel):
     username: str
     email: EmailStr

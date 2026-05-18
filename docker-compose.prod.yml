@@ -3,6 +3,26 @@ services:
     restart: always
   redis-auth:
     restart: always
+
+  postgres-device:
+    restart: always
+
+  redis-device:
+    restart: always
+
+  mongo_register:
+    restart: always
+
+  mongo_notifications:
+    restart: always
+
+  mongo_telemetry:
+    restart: always
+  
+  rabbitmq:
+    restart: always
+    image: rabbitmq:4-alpine
+
   api-gateway:
     ports:
       - "80:8000"
