@@ -50,6 +50,7 @@ async def register_device(device_data: Register_Device) -> Device_Register_Respo
                 "mac_address": new_device.mac_address,
                 "device_name": new_device.device_name,
                 "user_uuid": new_device.user_uuid,
+                "report_interval": str(new_device.report_interval),
                 "status": new_device.status,
                 "ultima_vez_log": datetime.now(timezone.utc).isoformat(),
             },
@@ -80,9 +81,12 @@ async def update_device(device_data: Update_Device) -> Device_Update_Response:
         await session.refresh(device)
 
         redis_client = get_redis()
+        redis_mapping: dict[str, str] = {"status": device.status}
+        if device_data.report_interval is not None:
+            redis_mapping["report_interval"] = str(device.report_interval)
         await redis_client.hset(
             _device_redis_key(device.device_uuid),
-            mapping={"status": device.status},
+            mapping=redis_mapping,
         )
 
         return Device_Update_Response(

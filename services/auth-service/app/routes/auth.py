@@ -122,6 +122,21 @@ async def get_user_by_email(email: str, db: db_dependency):
     return UserIdResponse(id=user.id, name=user.name, email=user.email, role=user.role)
 
 
+@router.get(
+    "/user/{user_id}",
+    status_code=status.HTTP_200_OK,
+    response_model=UserIdResponse,
+)
+async def get_user_by_id(user_id: str, db: db_dependency):
+    result = await db.execute(select(Users).where(Users.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+    return UserIdResponse(id=user.id, name=user.name, email=user.email, role=user.role)
+
+
 @router.put("/user/{user_id}", status_code=status.HTTP_200_OK)
 async def update_user(user_id: str, body: UserUpdate, db: db_dependency):
     result = await db.execute(select(Users).where(Users.id == user_id))

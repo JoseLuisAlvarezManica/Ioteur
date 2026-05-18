@@ -23,6 +23,7 @@ def _device_redis_key(device_id: str) -> str:
 
 @register_router.post("/received", status_code=status.HTTP_202_ACCEPTED)
 async def register_received(body: RegisterReceivedRequest):
+    current_status: str | None = None
     try:
         redis = get_redis()
         key = _device_redis_key(body.device_id)
@@ -36,7 +37,21 @@ async def register_received(body: RegisterReceivedRequest):
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Device {body.device_id} is not registered",
             )
-        await redis.hset(key, "ultima_vez_log", datetime.now(timezone.utc).isoformat())
+
+        current_status = await redis.hget(key, "status")
+        redis_update: dict[str, str] = {
+            "ultima_vez_log": datetime.now(timezone.utc).isoformat()
+        }
+
+        if current_status == "inactive":
+            redis_update["status"] = "active"
+            logger.info(
+                "Device %s reconnected, restoring status to active",
+                body.device_id,
+                extra={"event": "device.reconnected"},
+            )
+
+        await redis.hset(key, mapping=redis_update)
         logger.info(
             "Updated device.connected for %s",
             body.device_id,
@@ -61,6 +76,17 @@ async def register_received(body: RegisterReceivedRequest):
         )
 
     try:
+        if current_status == "inactive":
+            await publish(
+                EXCHANGE,
+                "device.update",
+                {"device_uuid": body.device_id, "status": "active"},
+            )
+            logger.info(
+                "Queued device.update (active) for reconnected device %s",
+                body.device_id,
+                extra={"event": "device.reactivated"},
+            )
         await publish(EXCHANGE, "register.received", body.model_dump())
         logger.info(
             "Queued register.received for device %s",

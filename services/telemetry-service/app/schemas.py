@@ -15,7 +15,6 @@ class MetricData(BaseModel):
 
 class DailyReport(BaseModel):
     model_config = {"populate_by_name": True}
-
     device_id: str = Field(..., alias="deviceId")
     created_at: datetime = Field(..., alias="createdAt")
     metric_data: list[MetricData] = Field(..., alias="metricData")

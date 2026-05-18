@@ -87,7 +87,6 @@ async def get_device_by_user(request: Request, client: call_dep):
     status_code=status.HTTP_202_ACCEPTED,
     dependencies=[Depends(bearer_scheme)],
 )
-@must_be_logged_in
 async def register_received(request: Request, body: RegisterReceived, client: call_dep):
     code, data = await client.post("/registers/received", body.model_dump())
     if code != status.HTTP_202_ACCEPTED:

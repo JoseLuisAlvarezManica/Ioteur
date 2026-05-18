@@ -10,6 +10,7 @@ import logging
 from .config import settings
 from .logging_config import JsonFormatter
 from .helpers.redis_client import init_redis, close_redis
+from .helpers.scheduler import scheduler_loop
 from .routes.device import device_router
 from .routes.register import register_router
 from .routes.reports import reports_router
@@ -31,7 +32,11 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     logger.info("Starting up Call Service", extra={"event": "startup"})
     await init_redis()
+    _scheduler_task = asyncio.create_task(scheduler_loop())
+    logger.info("Scheduler started", extra={"event": "scheduler.start"})
     yield
+    _scheduler_task.cancel()
+    await asyncio.gather(_scheduler_task, return_exceptions=True)
     await close_redis()
     logger.info("Shutting down Call Service", extra={"event": "shutdown"})
 
