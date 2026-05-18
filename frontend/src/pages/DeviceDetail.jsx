@@ -5,6 +5,14 @@ import { devicesApi } from "../api/devices";
 import { recordsApi, telemetryApi } from "../api/telemetry";
 import { UserBar, FilterBar } from "./Dashboard";
 import { useAppContext } from "../context/AppContext";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+} from "recharts";
 
 function DeviceDetail() {
   const { id } = useParams();
@@ -38,7 +46,7 @@ function DeviceDetail() {
     if (id) {
       setLoadingRecords(true);
       recordsApi.list(id)
-        .then((recs) => setRecords(recs))
+       .then((recs) => setRecords(recs))
         .catch((err) => setError(err.message))
         .finally(() => setLoadingRecords(false));
     }
@@ -97,6 +105,32 @@ function DeviceDetail() {
 
   const isActive = device.status === "active";
 
+  const chartData = records.slice(-8).map((row, index) => {
+  const values =
+    typeof row.values === "object" && row.values !== null
+      ? row.values
+      : {};
+
+  const numericValues = Object.fromEntries(
+    Object.entries(values).filter(([, value]) => typeof value === "number")
+  );
+
+  return {
+    name: row.created_at
+      ? new Date(row.created_at).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : `Dato ${index + 1}`,
+    ...numericValues,
+  };
+});
+
+const metricKeys =
+  chartData.length > 0
+    ? Object.keys(chartData[0]).filter((key) => key !== "name")
+    : [];
+
   return (
     <AppLayout pageTitle={`Dispositivos (${device.device_name})`}>
       <UserBar />
@@ -148,39 +182,57 @@ function DeviceDetail() {
       </div>
 
       {/* Recent Data */}
-      <div className="bg-white border border-gray-200 rounded-2xl p-6 mb-4">
-        <h3 className="text-base font-bold text-gray-900 mb-3">Recent Data</h3>
-        {records.length === 0 ? (
-          <p className="text-sm text-gray-400">No records yet.</p>
-        ) : (
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr>
-                <th className="border border-gray-300 px-4 py-2 text-center font-semibold text-gray-800">
-                  Timestamp
-                </th>
-                <th className="border border-gray-300 px-4 py-2 text-center font-semibold text-gray-800">
-                  Payload
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {records.map((row, i) => (
-                <tr key={i}>
-                  <td className="border border-gray-200 px-4 py-2 text-gray-600">
-                    {new Date(row.created_at).toLocaleString()}
-                  </td>
-                  <td className="border border-gray-200 px-4 py-2 text-gray-600 font-mono text-xs">
-                    {typeof row.values === "object"
-                      ? JSON.stringify(row.values)
-                      : row.values}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+<div className="bg-white border border-gray-200 rounded-2xl p-6 mb-4">
+  <h3 className="text-base font-bold text-gray-900 mb-3">Recent Data</h3>
+
+  {records.length === 0 || metricKeys.length === 0 ? (
+    <p className="text-sm text-gray-400">No records yet.</p>
+  ) : (
+    <div className="space-y-6">
+      {metricKeys.map((metric) => (
+        <div key={metric}>
+          <h4 className="text-sm font-bold text-blue-900 mb-3 capitalize tracking-wide">
+            {metric}
+          </h4>
+
+          <div className="w-full h-72 bg-gradient-to-br from-blue-50 to-white rounded-2xl p-4 border border-blue-100 shadow-sm">
+  <ResponsiveContainer width="100%" height="100%">
+    <BarChart data={chartData}>
+      <XAxis
+        dataKey="name"
+        tick={{ fill: "#64748b", fontSize: 12 }}
+        axisLine={false}
+        tickLine={false}
+      />
+
+      <YAxis
+        tick={{ fill: "#64748b", fontSize: 12 }}
+        axisLine={false}
+        tickLine={false}
+      />
+
+      <Tooltip
+        contentStyle={{
+          borderRadius: "16px",
+          border: "none",
+          backgroundColor: "#ffffff",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
+        }}
+      />
+
+      <Bar
+        dataKey={metric}
+        radius={[12, 12, 0, 0]}
+        fill="#3b82f6"
+      />
+    </BarChart>
+  </ResponsiveContainer>
+</div>
+        </div>
+      ))}
+    </div>
+  )}
+</div>
 
       {/* Report feedback */}
       {reportMsg && (
