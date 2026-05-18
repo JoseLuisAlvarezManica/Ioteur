@@ -19,7 +19,7 @@ RABBITMQ_URL = os.getenv(
 )
 REGISTER_BASE_URL = os.getenv("REGISTER_BASE_URL", "http://localhost:8005")
 EXCHANGE_NAME = "ioteur"
-ROUTING_KEY = "device.register"
+ROUTING_KEY = "register.received"
 POLL_INTERVAL = 0.5
 POLL_TIMEOUT = 15
 
@@ -42,7 +42,7 @@ async def test_register_flow():
     values = {"temperature": 22.5, "humidity": 55}
     payload = {"device_id": device_id, "time_procesing": 3, "values": values}
 
-    # 1. Publish device.register
+    # 1. Publish register.received
     conn = await aio_pika.connect_robust(RABBITMQ_URL)
     async with conn:
         channel = await conn.channel()

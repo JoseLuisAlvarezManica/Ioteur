@@ -99,7 +99,6 @@ def test_04_register_device(unique_user):
     assert token and user_id
 
     body = {
-        "user_id": user_id,
         "device_name": "sensor-e2e",
         "mac_address": "AA:BB:CC:DD:EE:FF",
         "report_interval": 60,
@@ -120,17 +119,16 @@ def test_04_register_device(unique_user):
 def test_05_poll_device_appears(unique_user):
     """Wait until device-service has processed the async registration."""
     token = unique_user.get("access_token")
-    user_id = unique_user.get("user_id")
-    assert token and user_id
+    assert token
 
-    print(f"\n[05] Polling GET /devices/{user_id} (timeout={POLL_TIMEOUT}s) …")
+    print(f"\n[05] Polling GET /devices/me (timeout={POLL_TIMEOUT}s) …")
     deadline = time.time() + POLL_TIMEOUT
     attempt = 0
     device_uuid = None
     while time.time() < deadline:
         attempt += 1
         resp = requests.get(
-            f"{BASE_URL}/devices/{user_id}",
+            f"{BASE_URL}/devices/me",
             headers=_auth_headers(token),
             timeout=10,
         )

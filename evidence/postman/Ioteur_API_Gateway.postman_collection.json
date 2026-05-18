@@ -8,7 +8,6 @@
     { "key": "base_url",      "value": "http://localhost:8000" },
     { "key": "access_token",  "value": "" },
     { "key": "refresh_token", "value": "" },
-    { "key": "user_id",       "value": "" },
     { "key": "device_uuid",   "value": "" }
   ],
   "item": [
@@ -171,7 +170,7 @@
             "url": { "raw": "{{base_url}}/devices/register", "host": ["{{base_url}}"], "path": ["devices", "register"] },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"device_name\": \"Sensor Temp 01\",\n  \"mac_address\": \"AA:BB:CC:DD:EE:FF\",\n  \"report_interval\": 60\n}"
+              "raw": "{\n  \"device_name\": \"Sensor Temp 01\",\n  \"mac_address\": \"AA:BB:CC:DD:EE:FF\",\n  \"report_interval\": 60\n}"
             }
           }
         },
@@ -196,9 +195,9 @@
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
             "url": {
-              "raw": "{{base_url}}/devices/{{user_id}}",
+              "raw": "{{base_url}}/devices/me",
               "host": ["{{base_url}}"],
-              "path": ["devices", "{{user_id}}"]
+              "path": ["devices", "me"]
             }
           }
         },
