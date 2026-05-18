@@ -1,8 +1,10 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
+import { AppProvider } from "./context/AppContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 import Login         from "./pages/Login";
+import Register      from "./pages/Register";
 import Dashboard     from "./pages/Dashboard";
 import DeviceDetail  from "./pages/DeviceDetail";
 import Notifications from "./pages/Notifications";
@@ -11,9 +13,11 @@ import Reports       from "./pages/Reports";
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Login />} />
+      <AppProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Login />} />
+          <Route path="/register" element={<Register />} />
 
           <Route path="/dashboard" element={
             <ProtectedRoute><Dashboard /></ProtectedRoute>
@@ -32,6 +36,7 @@ function App() {
           } />
         </Routes>
       </BrowserRouter>
+      </AppProvider>
     </AuthProvider>
   );
 }

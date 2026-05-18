@@ -8,12 +8,16 @@ class RegisterDeviceRequest(BaseModel):
     device_name: str
     mac_address: str
     report_interval: int
+    icon: str | None = "sensor"
+    color: str | None = "#000000"
 
 
 class UpdateDeviceRequest(BaseModel):
     device_uuid: str
     report_interval: int | None = None
     status: str | None = None
+    icon: str | None = None
+    color: str | None = None
 
 
 class RegisterReceivedRequest(BaseModel):

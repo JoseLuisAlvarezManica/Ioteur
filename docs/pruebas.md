@@ -1,5 +1,4 @@
 
-<<<<<<< HEAD
 ### CURL para confirmar que la api de node JS funcionaba
 curl -X POST https://api.emailjs.com/api/v1.0/email/send \
   -H "Content-Type: application/json" \
@@ -23,7 +22,6 @@ curl -X POST https://api.emailjs.com/api/v1.0/email/send \
 ### Evidencia de un correo generado con el CURL anterior
 
 ![Logo](./images/Evidence_EmailJS.png)
-=======
 # Pruebas — Ioteur
 
 ---
@@ -160,4 +158,3 @@ La evidencia de ejecución manual se encuentra en [`evidence/postman/Evidencia_P
 | Colección Postman (JSON) | [`evidence/postman/Ioteur_API_Gateway.postman_collection.json`](../evidence/postman/Ioteur_API_Gateway.postman_collection.json) |
 | PDF de pruebas manuales Postman | [`evidence/postman/Evidencia_Pruebas_Postman.pdf`](../evidence/postman/Evidencia_Pruebas_Postman.pdf) |
 | Logs de ejecución Docker | [`evidence/logs/`](../evidence/logs/) |
->>>>>>> features/QA_and_Docs

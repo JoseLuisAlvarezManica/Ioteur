@@ -4,30 +4,44 @@ import AppLayout from "../layouts/AppLayout";
 import { devicesApi } from "../api/devices";
 import { recordsApi, telemetryApi } from "../api/telemetry";
 import { UserBar, FilterBar } from "./Dashboard";
+import { useAppContext } from "../context/AppContext";
 
 function DeviceDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { devices, loadingDevices, fetchDevices } = useAppContext();
 
   const [device, setDevice]       = useState(null);
   const [records, setRecords]     = useState([]);
-  const [loading, setLoading]     = useState(true);
+  const [loadingRecords, setLoadingRecords] = useState(true);
+  // Extraemos el load de reportMsg y errors más abajo
   const [error, setError]         = useState(null);
   const [reportMsg, setReportMsg] = useState(null);
   const [deleting, setDeleting]   = useState(false);
   const [filter, setFilter]       = useState("all");
 
   useEffect(() => {
-    Promise.all([
-      devicesApi.get(id),
-      recordsApi.list(id),
-    ])
-      .then(([dev, recs]) => {
-        setDevice(dev);
-        setRecords(recs);
-      })
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
+    // Si todavía no hay dispositivos, los refrescamos (por si el usuario entró directo a la url)
+    if (devices.length === 0 && !loadingDevices) {
+       fetchDevices();
+    }
+  }, [devices.length, loadingDevices, fetchDevices]);
+
+  useEffect(() => {
+    const found = devices.find(d => d.device_uuid === id);
+    if (found) {
+      setDevice(found);
+    }
+  }, [devices, id]);
+
+  useEffect(() => {
+    if (id) {
+      setLoadingRecords(true);
+      recordsApi.list(id)
+        .then((recs) => setRecords(recs))
+        .catch((err) => setError(err.message))
+        .finally(() => setLoadingRecords(false));
+    }
   }, [id]);
 
   const handleRequestReport = async () => {
@@ -56,15 +70,18 @@ function DeviceDetail() {
     const newStatus = device.status === "active" ? "inactive" : "active";
     try {
       const updated = await devicesApi.updateStatus(id, newStatus);
-      setDevice(updated);
+      // Puesto que usamos AppContext, deberíamos recargarlo... 
+      // pero por ahora actualizamos visualmente copiando o llamando a fetchDevices:
+      fetchDevices();
+      setDevice(prev => ({ ...prev, status: newStatus }));
     } catch (err) {
       alert(err.message);
     }
   };
 
-  if (loading) {
+  if (loadingDevices || loadingRecords) {
     return (
-      <AppLayout pageTitle="My Devices">
+      <AppLayout pageTitle="Dispositivos">
         <p className="text-gray-400 text-sm">Loading...</p>
       </AppLayout>
     );
@@ -72,7 +89,7 @@ function DeviceDetail() {
 
   if (error || !device) {
     return (
-      <AppLayout pageTitle="My Devices">
+      <AppLayout pageTitle="Dispositivos">
         <p className="text-red-500 text-sm">{error || "Device not found."}</p>
       </AppLayout>
     );
@@ -81,13 +98,13 @@ function DeviceDetail() {
   const isActive = device.status === "active";
 
   return (
-    <AppLayout pageTitle={`My Devices (${device.device_name})`}>
+    <AppLayout pageTitle={`Dispositivos (${device.device_name})`}>
       <UserBar />
       <FilterBar filter={filter} setFilter={setFilter} />
 
       {/* Device info card */}
       <div className="bg-white border border-gray-200 rounded-2xl p-6 mb-4">
-        <h2 className="text-xl font-bold text-gray-900 mb-1">My Devices</h2>
+        <h2 className="text-xl font-bold text-gray-900 mb-1">Dispositivos</h2>
         <p className="text-base font-semibold text-gray-800 mb-4">
           {device.device_name}
         </p>
@@ -106,7 +123,7 @@ function DeviceDetail() {
           <ul className="flex flex-col justify-center gap-3 text-sm text-gray-800">
             <li><span className="font-bold">Name:</span> {device.device_name}</li>
             <li><span className="font-bold">MAC Address:</span> {device.mac_address}</li>
-            <li><span className="font-bold">UUID:</span> {device.id}</li>
+            <li><span className="font-bold">UUID:</span> {device.device_uuid}</li>
             <li>
               <span className="font-bold">Last seen:</span>{" "}
               {device.last_seen

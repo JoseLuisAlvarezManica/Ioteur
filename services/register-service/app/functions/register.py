@@ -47,11 +47,7 @@ async def handle_device_register(body: bytes, request_id: str) -> None:
     last_exc: Exception | None = None
     for attempt in range(1, MAX_RETRIES + 1):
         try:
-<<<<<<< HEAD
             doc = record.model_dump(by_alias=True, mode="json")
-=======
-            doc = record.model_dump(by_alias=True)
->>>>>>> features/QA_and_Docs
             await collection.insert_one(doc)
             logger.info(
                 "Register inserted on attempt %d",

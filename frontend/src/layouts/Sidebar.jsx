@@ -1,4 +1,6 @@
 import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { useAppContext } from "../context/AppContext";
 
 const HomeIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -28,13 +30,11 @@ const DeviceSmIcon = () => (
   </svg>
 );
 
-const mockDevices = [
-  { id: 1, name: "Device #1" },
-  { id: 2, name: "Device #2" },
-  { id: 3, name: "Device #3" },
-];
+
 
 function Sidebar() {
+  const { user } = useAuth();
+  const { devices } = useAppContext();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -85,28 +85,28 @@ function Sidebar() {
         })}
       </nav>
 
-      {/* My Devices expandable */}
+      {/* Dispositivos expandable */}
       <div className="mt-1">
         <div className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 font-medium">
           <DevicesIcon />
-          <span>My Devices</span>
+          <span>Dispositivos</span>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="ml-auto">
             <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
           </svg>
         </div>
         <div className="flex flex-col gap-1 ml-3 mt-1">
-          {mockDevices.map((device) => {
-            const active = location.pathname === `/devices/${device.id}`;
+          {devices.map((device) => {
+            const active = location.pathname === `/devices/${device.device_uuid}`;
             return (
               <button
-                key={device.id}
-                onClick={() => navigate(`/devices/${device.id}`)}
+                key={device.device_uuid}
+                onClick={() => navigate(`/devices/${device.device_uuid}`)}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-left transition-colors ${
                   active ? "text-black font-semibold" : "text-gray-500 hover:text-gray-700"
                 }`}
               >
                 <DeviceSmIcon />
-                {device.name}
+                {device.device_name}
               </button>
             );
           })}

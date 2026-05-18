@@ -3,6 +3,7 @@ import AppLayout from "../layouts/AppLayout";
 import { devicesApi } from "../api/devices";
 import { telemetryApi } from "../api/telemetry";
 import { UserBar } from "./Dashboard";
+import { useAuth } from "../context/AuthContext";
 
 function ReportCard({ report }) {
   return (
@@ -44,6 +45,7 @@ function ReportCard({ report }) {
 }
 
 function Reports() {
+  const { user } = useAuth();
   const [devices, setDevices]         = useState([]);
   const [selectedDevice, setSelected] = useState("");
   const [reports, setReports]         = useState([]);
@@ -54,13 +56,15 @@ function Reports() {
 
   // Cargar dispositivos al montar
   useEffect(() => {
-    devicesApi.list()
+    if (!user?.id) return;
+    
+    devicesApi.getByUser(user.id)
       .then((devs) => {
         setDevices(devs);
         if (devs.length > 0) setSelected(devs[0].id);
       })
       .catch((err) => setError(err.message));
-  }, []);
+  }, [user]);
 
   // Cargar reportes cuando cambia el dispositivo seleccionado
   useEffect(() => {

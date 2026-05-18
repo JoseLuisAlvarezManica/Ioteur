@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import AppLayout from "../layouts/AppLayout";
 import { devicesApi } from "../api/devices";
+import { useAuth } from "../context/AuthContext";
+import { useAppContext } from "../context/AppContext";
 
 /* ── Device Card ─────────────────────────────────────────────── */
 function DeviceCard({ device, onClick }) {
@@ -9,7 +11,7 @@ function DeviceCard({ device, onClick }) {
 
   return (
     <div
-      onClick={() => hasData && onClick(device.id)}
+      onClick={() => hasData && onClick(device.device_uuid)}
       className={`bg-gray-200 rounded-2xl aspect-square relative overflow-hidden ${
         hasData ? "cursor-pointer hover:bg-gray-300 transition-colors" : ""
       }`}
@@ -39,21 +41,22 @@ function DeviceCard({ device, onClick }) {
 }
 
 /* ── Add Device Modal ────────────────────────────────────────── */
-function AddDeviceModal({ onClose, onAdded }) {
+function AddDeviceModal({ userId, onClose, onAdded }) {
   const [name, setName]       = useState("");
   const [mac, setMac]         = useState("");
+  const [interval, setInterval] = useState("60");
   const [error, setError]     = useState(null);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
-    if (!name.trim() || !mac.trim()) {
-      setError("Nombre y dirección MAC son requeridos.");
+    if (!name.trim() || !mac.trim() || !interval) {
+      setError("Todos los campos son requeridos.");
       return;
     }
     setError(null);
     setLoading(true);
     try {
-      const newDevice = await devicesApi.create({ name, macAddress: mac });
+      const newDevice = await devicesApi.create({ userId, name, macAddress: mac, reportInterval: interval });
       onAdded(newDevice);
       onClose();
     } catch (err) {
@@ -81,7 +84,7 @@ function AddDeviceModal({ onClose, onAdded }) {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="border border-gray-300 rounded-xl px-4 py-3 text-sm outline-none"
+              className="border border-gray-300 rounded-xl px-4 py-3 text-sm outline-none w-full focus:border-purple-400 focus:ring-1 focus:ring-purple-100 transition-colors"
               placeholder="Mi sensor de temperatura"
             />
           </div>
@@ -91,9 +94,23 @@ function AddDeviceModal({ onClose, onAdded }) {
               type="text"
               value={mac}
               onChange={(e) => setMac(e.target.value)}
-              className="border border-gray-300 rounded-xl px-4 py-3 text-sm outline-none font-mono"
+              className="border border-gray-300 rounded-xl px-4 py-3 text-sm outline-none font-mono w-full focus:border-purple-400 focus:ring-1 focus:ring-purple-100 transition-colors"
               placeholder="AA:BB:CC:DD:EE:FF"
             />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-700">Intervalo de mediciones (segundos)</label>
+            <input
+              type="number"
+              min="1"
+              value={interval}
+              onChange={(e) => setInterval(e.target.value)}
+              className="border border-gray-300 rounded-xl px-4 py-3 text-sm outline-none w-full focus:border-purple-400 focus:ring-1 focus:ring-purple-100 transition-colors"
+              placeholder="60"
+            />
+            <p className="text-xs text-purple-600 font-medium ml-1 mt-0.5">
+              Esto nos ayudará a saber si el dispositivo tiene problemas.
+            </p>
           </div>
         </div>
 
@@ -119,19 +136,11 @@ function AddDeviceModal({ onClose, onAdded }) {
 
 /* ── Dashboard ───────────────────────────────────────────────── */
 function Dashboard() {
+  const { user } = useAuth();
+  const { devices, loadingDevices: loading, errorDevices: error, fetchDevices } = useAppContext();
   const [filter, setFilter]       = useState("all");
-  const [devices, setDevices]     = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [error, setError]         = useState(null);
   const [showModal, setShowModal] = useState(false);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    devicesApi.list()
-      .then(setDevices)
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, []);
 
   const filtered = devices.filter((d) => {
     if (filter === "all") return true;
@@ -140,12 +149,28 @@ function Dashboard() {
 
   const padded = [
     ...filtered,
-    ...Array(Math.max(0, 8 - filtered.length)).fill({ id: null }),
+    ...Array(Math.max(0, 8 - filtered.length)).fill({ device_uuid: null }),
   ].slice(0, 8);
 
   return (
     <AppLayout pageTitle="Dashboard">
       <UserBar />
+
+      {/* Notas moradas */}
+      <div className="bg-purple-100 border border-purple-200 rounded-2xl p-5 mb-6 shadow-sm relative overflow-hidden flex items-center gap-4">
+        <div className="p-3 bg-purple-200 rounded-full text-purple-700">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+        </div>
+        <div>
+          <h3 className="text-purple-900 font-bold text-sm">Resumen del sistema</h3>
+          <p className="text-purple-700 text-xs mt-0.5">La conexión con el Gateway está estable. Revisa el estado general de tus dispositivos a continuación.</p>
+        </div>
+      </div>
+
       <FilterBar filter={filter} setFilter={setFilter} />
 
       <div className="flex items-center justify-between mb-4">
@@ -170,7 +195,7 @@ function Dashboard() {
         <div className="grid grid-cols-4 gap-4">
           {padded.map((device, i) => (
             <DeviceCard
-              key={device.id ?? `empty-${i}`}
+              key={device.device_uuid ?? `empty-${i}`}
               device={device}
               onClick={(id) => navigate(`/devices/${id}`)}
             />
@@ -180,8 +205,12 @@ function Dashboard() {
 
       {showModal && (
         <AddDeviceModal
+          userId={user?.id}
           onClose={() => setShowModal(false)}
-          onAdded={(d) => setDevices((prev) => [...prev, d])}
+          onAdded={() => {
+            setShowModal(false);
+            fetchDevices();
+          }}
         />
       )}
     </AppLayout>
