@@ -77,6 +77,7 @@ async def get_device_by_user(request: Request, user_id: str, client: call_dep):
         raise HTTPException(status_code=code, detail=data)
     return data
 
+
 @router.delete(
     "/devices/{device_id}",
     status_code=status.HTTP_202_ACCEPTED,

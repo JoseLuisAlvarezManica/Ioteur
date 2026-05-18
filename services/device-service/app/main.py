@@ -121,17 +121,21 @@ def on_device_update(channel, method, properties, body: bytes) -> None:
         )
         channel.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
+
 def on_device_delete(channel, method, properties, body: bytes) -> None:
     from .functions.managment import delete_device
     import json
+
     try:
         json_str = body.decode("utf-8", errors="replace").strip()
         data = json.loads(json_str)
         device_uuid = data.get("device_uuid")
         if not device_uuid:
             raise ValueError("device_uuid must be provided")
-        
-        future = asyncio.run_coroutine_threadsafe(delete_device(device_uuid), _main_loop)
+
+        future = asyncio.run_coroutine_threadsafe(
+            delete_device(device_uuid), _main_loop
+        )
         future.result(timeout=30)
         channel.basic_ack(delivery_tag=method.delivery_tag)
     except Exception as exc:
@@ -144,6 +148,7 @@ def on_device_delete(channel, method, properties, body: bytes) -> None:
             _main_loop,
         )
         channel.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+
 
 def start_subscribers() -> None:
     start_subscriber(EXCHANGE, QUEUE, ROUTING_KEY, on_device_register)
