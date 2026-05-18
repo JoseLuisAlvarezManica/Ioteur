@@ -11,6 +11,7 @@ from ..schemas import (
     TokenResponse,
     MeResponse,
     UserUpdate,
+    UserSelfUpdate,
     UserIdResponse,
 )
 
@@ -154,6 +155,23 @@ async def logout(request: Request, auth_client: auth_dependency):
 @must_be_logged_in
 async def me(request: Request, auth_client: auth_dependency):
     code, data = await auth_client.get("/auth/me", headers=request.state.auth_headers)
+    if code != status.HTTP_200_OK:
+        raise HTTPException(status_code=code, detail=data)
+    return data
+
+
+@router.patch(
+    "/me",
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(bearer_scheme)],
+)
+@must_be_logged_in
+async def update_me(request: Request, body: UserSelfUpdate, auth_client: auth_dependency):
+    code, data = await auth_client.patch(
+        "/auth/me",
+        body.model_dump(exclude_none=True),
+        headers=request.state.auth_headers,
+    )
     if code != status.HTTP_200_OK:
         raise HTTPException(status_code=code, detail=data)
     return data

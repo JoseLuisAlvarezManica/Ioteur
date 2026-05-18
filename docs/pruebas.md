@@ -48,7 +48,7 @@ Si alguno de los dos falla, el workflow bloquea el merge.
 
 Se ejecuta en pushes y PRs a `main` y `develop`. Levanta el stack completo y ejecuta dos scripts bash:
 
-**`auth_curl_tests.sh`** — prueba directamente `auth-service` en `localhost:8001`:
+**`auth_curl_tests.sh`** — prueba directamente `auth-service` en `localhost:8001` (19 tests):
 
 | Test | Request | Código esperado |
 |---|---|---|
@@ -60,9 +60,48 @@ Se ejecuta en pushes y PRs a `main` y `develop`. Levanta el stack completo y eje
 | `me_ok` | `GET /auth/me` con token válido | 200 |
 | `me_no_token` | `GET /auth/me` sin token | 401 |
 | `me_bad_token` | `GET /auth/me` con token malformado | 401 |
+| `update_me_name_ok` | `PATCH /auth/me` actualizando nombre | 200 |
+| `update_me_no_token` | `PATCH /auth/me` sin token | 401 |
+| `update_me_wrong_password` | `PATCH /auth/me` con contraseña vieja incorrecta | 400 |
+| `update_me_password_ok` | `PATCH /auth/me` cambiando contraseña correctamente | 200 |
 | `refresh_ok` | `POST /auth/refresh` con tokens válidos | 200 |
+| `refresh_bad_token` | `POST /auth/refresh` con refresh token inválido | 401 |
+| `logout_ok` | `POST /auth/logout` con tokens válidos | 200 |
+| `me_revoked` | `GET /auth/me` con token revocado tras logout | 401 |
+| `refresh_revoked` | `POST /auth/refresh` con tokens revocados tras logout | 401 |
+| `update_user_ok` | `PUT /auth/user/{id}` sin token (endpoint interno) | 200 |
+| `delete_user_ok` | `DELETE /auth/user/{id}` sin token (endpoint interno) | 200 |
 
-**`gateway_curl_tests.sh`** — prueba el API Gateway en `localhost:8000` con un admin creado directamente en auth-service (bypass del gateway para bootstrap). Verifica los mismos flujos de autenticación pero pasando por el gateway con el header `Authorization: Bearer`.
+**`gateway_curl_tests.sh`** — prueba el API Gateway en `localhost:8000` (26 tests). Crea el admin directamente en `auth-service` (bypass del gateway para bootstrap) y luego ejerce todos los flujos pasando por el gateway con `Authorization: Bearer`. A diferencia del script anterior, valida también control de acceso por roles (usuario regular vs. admin):
+
+| Test | Request | Código esperado |
+|---|---|---|
+| `signup_ok` | `POST /auth/signup` con datos válidos | 201 |
+| `signup_conflict` | `POST /auth/signup` con email duplicado | 409 |
+| `login_user_ok` | `POST /auth/login` como usuario regular | 200 |
+| `login_bad_creds` | `POST /auth/login` con contraseña incorrecta | 401 |
+| `login_admin_ok` | `POST /auth/login` como admin | 200 |
+| `me_ok` | `GET /auth/me` con token de usuario | 200 |
+| `me_no_token` | `GET /auth/me` sin token | 401 |
+| `me_bad_token` | `GET /auth/me` con token malformado | 401 |
+| `update_me_name_ok` | `PATCH /auth/me` actualizando nombre | 200 |
+| `update_me_no_token` | `PATCH /auth/me` sin token | 401 |
+| `update_me_wrong_password` | `PATCH /auth/me` con contraseña vieja incorrecta | 400 |
+| `update_me_password_ok` | `PATCH /auth/me` cambiando contraseña correctamente | 200 |
+| `admin_register_no_token` | `POST /auth/admin/register` sin token | 401 |
+| `admin_register_forbidden` | `POST /auth/admin/register` con token de usuario regular | 403 |
+| `admin_register_ok` | `POST /auth/admin/register` con token de admin | 201 |
+| `get_user_by_email_ok` | `GET /auth/user/by-email/{email}` como admin | 200 |
+| `get_user_by_email_forbidden` | `GET /auth/user/by-email/{email}` como usuario regular | 403 |
+| `update_user_ok` | `PUT /auth/user/{id}` como admin | 200 |
+| `update_user_forbidden` | `PUT /auth/user/{id}` como usuario regular | 403 |
+| `refresh_ok` | `POST /auth/refresh` con tokens válidos | 200 |
+| `refresh_no_refresh_token` | `POST /auth/refresh` sin header `X-Refresh-Token` | 401 |
+| `logout_ok` | `POST /auth/logout` con tokens válidos | 200 |
+| `me_revoked` | `GET /auth/me` con token revocado tras logout | 401 |
+| `refresh_revoked` | `POST /auth/refresh` con tokens revocados tras logout | 401 |
+| `delete_user_ok` | `DELETE /auth/user/{id}` como admin | 200 |
+| `delete_user_not_found` | `DELETE /auth/user/{id}` ya eliminado | 404 |
 
 ---
 
@@ -242,22 +281,17 @@ El sketch envía un `POST /registers/received` cada 30 segundos con valores de t
 | 7 | Dejar el sistema corriendo ~5 minutos sin reconectar el dispositivo | No se genera un segundo correo (un solo correo por estado de inactividad) |
 
 ### Evidencia
+**Inicio de logs:**
 
-**Log del Call Service — detección y publicación:**
-```
-call-service | device.connected  | Updated device.connected for 9e5bfdbf-...
-call-service | scheduler detecta 189s sin telemetría (umbral: 90s)
-call-service | device.update (inactive) publicado a RabbitMQ
-call-service | device.disconnected publicado a RabbitMQ
-```
+[1.Inicio_logs.png](../evidence/screenshots/device-active-inactive/1.Inicio_logs.png)
 
-**Redis — estado `active` (antes):**
+**Redis — estado `active`:**
 
-![Redis activo](../evidence/screenshots/device-active-inactive/redis_active.png)
+[2.Verificar_activo.png](../evidence/screenshots/device-active-inactive/2.Verificar_activo.png)
 
-**Redis — estado `inactive` (después):**
+**Redis — estado `inactive`**
 
-![Redis inactivo](../evidence/screenshots/device-active-inactive/redis_inactive.png)
+[3.Verificar_inactivo.png](../evidence/screenshots/device-active-inactive/3.Verificar_inactivo.png)
 
 **Correo recibido (Notification Service vía EmailJS):**
 
@@ -266,7 +300,15 @@ call-service | device.disconnected publicado a RabbitMQ
 - **Motivo:** `inactivity_timeout`
 - **Mensaje:** `"Device 'ESP32-1' has not sent telemetry for 189s (threshold: 90s). It has been marked as inactive."`
 
-![Correo inactividad](../evidence/screenshots/device-active-inactive/email_inactivity.png)
+[4.Correo_recibido.png](../evidence/screenshots/device-active-inactive/4.Correo_recibido.png)
+
+**Log del Call Service — detección y publicación:**
+```
+call-service | device.connected  | Updated device.connected for 9e5bfdbf-...
+call-service | scheduler detecta 189s sin telemetría (umbral: 90s)
+call-service | device.update (inactive) publicado a RabbitMQ
+call-service | device.disconnected publicado a RabbitMQ
+```
 
 **Logs del servicio:** [`evidence/logs/device-active-inactive.log`](../evidence/logs/device-active-inactive.log)
 

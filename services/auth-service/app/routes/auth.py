@@ -20,6 +20,7 @@ from ..schemas import (
     TokenResponse,
     MeResponse,
     UserUpdate,
+    UserSelfUpdate,
     UserIdResponse,
 )
 
@@ -377,3 +378,62 @@ async def me(
         )
 
     return MeResponse(name=user.name, email=user.email, role=user.role)
+
+
+@router.patch("/me", status_code=status.HTTP_200_OK)
+async def update_me(
+    body: UserSelfUpdate,
+    db: db_dependency,
+    token_context: tuple[dict[str, Any], str] = Depends(_validate_bearer_token),
+):
+    payload, _ = token_context
+
+    if payload.get("type") != "access":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Expected access token"
+        )
+
+    result = await db.execute(select(Users).where(Users.id == payload["sub"]))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
+    if body.name is not None:
+        user.name = body.name
+
+    if body.email is not None:
+        existing = await db.execute(select(Users).where(Users.email == body.email))
+        if existing.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail="Email already in use"
+            )
+        user.email = body.email
+
+    if body.new_password is not None:
+        if not verify_password(body.old_password, user.password_hash):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Current password is incorrect",
+            )
+        user.password_hash = hash_password(body.new_password)
+
+    try:
+        await db.commit()
+    except Exception as exc:
+        await db.rollback()
+        logger.error(
+            "Failed to update user profile",
+            extra={"event": "user_self_update", "status": "error", "error": str(exc)},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Could not update profile",
+        )
+
+    logger.info(
+        "User profile updated",
+        extra={"event": "user_self_update", "status": "success"},
+    )
+    return {"detail": "Profile updated successfully"}

@@ -1,6 +1,6 @@
 # Esquema para actualización de usuario (PUT)
 from typing import Optional
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, model_validator
 
 
 class UserUpdate(BaseModel):
@@ -8,6 +8,21 @@ class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
     password: Optional[str] = None
     role: Optional[str] = None
+
+
+class UserSelfUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    old_password: Optional[str] = None
+    new_password: Optional[str] = None
+
+    @model_validator(mode="after")
+    def check_password_fields(self) -> "UserSelfUpdate":
+        if (self.old_password is None) != (self.new_password is None):
+            raise ValueError(
+                "Both old_password and new_password must be provided together"
+            )
+        return self
 
 
 class SignUp(BaseModel):

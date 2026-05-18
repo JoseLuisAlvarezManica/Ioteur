@@ -197,7 +197,46 @@ run_test "me_bad_token" 401 \
   -H "Authorization: Bearer token.invalid.here"
 
 # =============================================================================
-# 9. ADMIN/REGISTER — sin token (espera 401)
+# 9. PATCH ME — actualizar nombre
+# =============================================================================
+hdr "PATCH /auth/me — Actualizar nombre"
+run_test "update_me_name_ok" 200 \
+  -X PATCH "$GATEWAY_BASE_URL/me" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $USER_ACCESS_TOKEN" \
+  -d '{"name":"John Patched"}'
+
+# =============================================================================
+# 10. PATCH ME — sin token (espera 401)
+# =============================================================================
+hdr "PATCH /auth/me — Sin token (espera 401)"
+run_test "update_me_no_token" 401 \
+  -X PATCH "$GATEWAY_BASE_URL/me" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Hacker"}'
+
+# =============================================================================
+# 11. PATCH ME — contraseña vieja incorrecta (espera 400)
+# =============================================================================
+hdr "PATCH /auth/me — Contraseña vieja incorrecta (espera 400)"
+run_test "update_me_wrong_password" 400 \
+  -X PATCH "$GATEWAY_BASE_URL/me" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $USER_ACCESS_TOKEN" \
+  -d '{"old_password":"WrongOldPass!","new_password":"NewPass456!"}'
+
+# =============================================================================
+# 12. PATCH ME — cambio de contraseña correcto
+# =============================================================================
+hdr "PATCH /auth/me — Cambio de contraseña correcto"
+run_test "update_me_password_ok" 200 \
+  -X PATCH "$GATEWAY_BASE_URL/me" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $USER_ACCESS_TOKEN" \
+  -d '{"old_password":"SuperSecret123!","new_password":"NewPass456!"}'
+
+# =============================================================================
+# 13. ADMIN/REGISTER — sin token (espera 401)
 # =============================================================================
 hdr "POST /auth/admin/register — Sin token (espera 401)"
 run_test "admin_register_no_token" 401 \
@@ -206,7 +245,7 @@ run_test "admin_register_no_token" 401 \
   -d '{"name":"Bad Actor","email":"badactor@example.com","password":"Hack123!"}'
 
 # =============================================================================
-# 10. ADMIN/REGISTER — con token de usuario regular (espera 403)
+# 14. ADMIN/REGISTER — con token de usuario regular (espera 403)
 # =============================================================================
 hdr "POST /auth/admin/register — Token de usuario (espera 403)"
 run_test "admin_register_forbidden" 403 \
@@ -216,7 +255,7 @@ run_test "admin_register_forbidden" 403 \
   -d '{"name":"Bad Actor","email":"badactor@example.com","password":"Hack123!"}'
 
 # =============================================================================
-# 11. ADMIN/REGISTER — con token de admin (espera 201)
+# 15. ADMIN/REGISTER — con token de admin (espera 201)
 # =============================================================================
 hdr "POST /auth/admin/register — Token de admin (espera 201)"
 run_test "admin_register_ok" 201 \
@@ -226,7 +265,7 @@ run_test "admin_register_ok" 201 \
   -d '{"name":"Second Admin","email":"admin2@example.com","password":"Admin2Pass!"}'
 
 # =============================================================================
-# 12. GET USER BY EMAIL — con token de admin
+# 16. GET USER BY EMAIL — con token de admin
 # =============================================================================
 hdr "GET /auth/user/by-email/{email} — Como admin"
 dim "  → GET $GATEWAY_BASE_URL/user/by-email/john@example.com"
@@ -252,7 +291,7 @@ echo -e "   ${GRAY}Response:${NC}"
 pretty "$USER_RESPONSE" | sed 's/^/   /'
 
 # =============================================================================
-# 13. GET USER BY EMAIL — con token de usuario regular (espera 403)
+# 17. GET USER BY EMAIL — con token de usuario regular (espera 403)
 # =============================================================================
 hdr "GET /auth/user/by-email/{email} — Token de usuario (espera 403)"
 run_test "get_user_by_email_forbidden" 403 \
@@ -260,7 +299,7 @@ run_test "get_user_by_email_forbidden" 403 \
   -H "Authorization: Bearer $USER_ACCESS_TOKEN"
 
 # =============================================================================
-# 14. UPDATE USER — como admin
+# 18. UPDATE USER — como admin
 # =============================================================================
 hdr "PUT /auth/user/{user_id} — Actualizar usuario como admin"
 if [ -z "${USER_ID:-}" ] || [ "$USER_ID" = "null" ]; then
@@ -275,7 +314,7 @@ else
 fi
 
 # =============================================================================
-# 15. UPDATE USER — con token de usuario regular (espera 403)
+# 19. UPDATE USER — con token de usuario regular (espera 403)
 # =============================================================================
 hdr "PUT /auth/user/{user_id} — Token de usuario (espera 403)"
 if [ -z "${USER_ID:-}" ] || [ "$USER_ID" = "null" ]; then
@@ -290,7 +329,7 @@ else
 fi
 
 # =============================================================================
-# 16. REFRESH — renovar access token
+# 20. REFRESH — renovar access token
 # =============================================================================
 hdr "POST /auth/refresh — Renovar access token"
 dim "  → POST $GATEWAY_BASE_URL/refresh"
@@ -318,7 +357,7 @@ echo -e "   ${GRAY}Response:${NC}"
 pretty "$REFRESH_RESPONSE" | sed 's/^/   /'
 
 # =============================================================================
-# 17. REFRESH — sin X-Refresh-Token (espera 401)
+# 21. REFRESH — sin X-Refresh-Token (espera 401)
 # =============================================================================
 hdr "POST /auth/refresh — Sin X-Refresh-Token (espera 401)"
 run_test "refresh_no_refresh_token" 401 \
@@ -326,7 +365,7 @@ run_test "refresh_no_refresh_token" 401 \
   -H "Authorization: Bearer $USER_ACCESS_TOKEN"
 
 # =============================================================================
-# 18. LOGOUT
+# 22. LOGOUT
 # =============================================================================
 hdr "POST /auth/logout — Cerrar sesión"
 run_test "logout_ok" 200 \
@@ -335,7 +374,7 @@ run_test "logout_ok" 200 \
   -H "X-Refresh-Token: $USER_REFRESH_TOKEN"
 
 # =============================================================================
-# 19. ME — token revocado tras logout (espera 401)
+# 23. ME — token revocado tras logout (espera 401)
 # =============================================================================
 hdr "GET /auth/me — Token revocado tras logout (espera 401)"
 run_test "me_revoked" 401 \
@@ -343,7 +382,7 @@ run_test "me_revoked" 401 \
   -H "Authorization: Bearer $USER_ACCESS_TOKEN"
 
 # =============================================================================
-# 20. REFRESH — tokens revocados tras logout (espera 401)
+# 24. REFRESH — tokens revocados tras logout (espera 401)
 # =============================================================================
 hdr "POST /auth/refresh — Tokens revocados tras logout (espera 401)"
 run_test "refresh_revoked" 401 \
@@ -352,7 +391,7 @@ run_test "refresh_revoked" 401 \
   -H "X-Refresh-Token: $USER_REFRESH_TOKEN"
 
 # =============================================================================
-# 21. DELETE USER — como admin
+# 25. DELETE USER — como admin
 # =============================================================================
 hdr "DELETE /auth/user/{user_id} — Eliminar usuario como admin"
 if [ -z "${USER_ID:-}" ] || [ "$USER_ID" = "null" ]; then
@@ -365,7 +404,7 @@ else
 fi
 
 # =============================================================================
-# 22. DELETE USER — usuario ya eliminado (espera 404)
+# 26. DELETE USER — usuario ya eliminado (espera 404)
 # =============================================================================
 hdr "DELETE /auth/user/{user_id} — Usuario inexistente (espera 404)"
 if [ -z "${USER_ID:-}" ] || [ "$USER_ID" = "null" ]; then
@@ -381,7 +420,7 @@ fi
 # Summary
 # =============================================================================
 sep
-TOTAL=22
+TOTAL=26
 PASSED=$((TOTAL - FAILURES))
 echo -e "\n${YELLOW}Results:${NC} ${GREEN}${PASSED} passed${NC} · ${RED}${FAILURES} failed${NC} · ${TOTAL} total\n"
 

@@ -176,7 +176,50 @@ run_test "me_bad_token" 401 \
   -H "X-Request-Id: req-me-003" \
 
 # =============================================================================
-# 9. REFRESH — renew access token
+# 9. PATCH ME — actualizar nombre
+# =============================================================================
+hdr "PATCH /auth/me — Actualizar nombre"
+run_test "update_me_name_ok" 200 \
+  -X PATCH "$BASE_URL/me" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "X-Request-Id: req-patchme-001" \
+  -d '{"name":"John Patched"}'
+
+# =============================================================================
+# 10. PATCH ME — sin token (espera 401)
+# =============================================================================
+hdr "PATCH /auth/me — Sin token (espera 401)"
+run_test "update_me_no_token" 401 \
+  -X PATCH "$BASE_URL/me" \
+  -H "Content-Type: application/json" \
+  -H "X-Request-Id: req-patchme-002" \
+  -d '{"name":"Hacker"}'
+
+# =============================================================================
+# 11. PATCH ME — contraseña vieja incorrecta (espera 400)
+# =============================================================================
+hdr "PATCH /auth/me — Contraseña vieja incorrecta (espera 400)"
+run_test "update_me_wrong_password" 400 \
+  -X PATCH "$BASE_URL/me" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "X-Request-Id: req-patchme-003" \
+  -d '{"old_password":"WrongOldPass!","new_password":"NewPass456!"}'
+
+# =============================================================================
+# 12. PATCH ME — cambio de contraseña correcto
+# =============================================================================
+hdr "PATCH /auth/me — Cambio de contraseña correcto"
+run_test "update_me_password_ok" 200 \
+  -X PATCH "$BASE_URL/me" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "X-Request-Id: req-patchme-004" \
+  -d '{"old_password":"SuperSecret123!","new_password":"NewPass456!"}'
+
+# =============================================================================
+# 13. REFRESH — renew access token
 # =============================================================================
 hdr "POST /auth/refresh — Renew access token"
 dim "  → POST $BASE_URL/refresh"
@@ -206,7 +249,7 @@ echo -e "   ${GRAY}Response:${NC}"
 pretty "$REFRESH_RESPONSE" | sed 's/^/   /'
 
 # =============================================================================
-# 10. REFRESH — invalid refresh token
+# 14. REFRESH — invalid refresh token
 # =============================================================================
 hdr "POST /auth/refresh — Invalid refresh token (expects 401)"
 run_test "refresh_bad_token" 401 \
@@ -216,7 +259,7 @@ run_test "refresh_bad_token" 401 \
   -H "X-Request-Id: req-refresh-002" \
 
 # =============================================================================
-# 11. LOGOUT
+# 15. LOGOUT
 # =============================================================================
 hdr "POST /auth/logout — Sign out"
 run_test "logout_ok" 200 \
@@ -226,7 +269,7 @@ run_test "logout_ok" 200 \
   -H "X-Request-Id: req-logout-001" \
 
 # =============================================================================
-# 12. ME — revoked token after logout
+# 16. ME — revoked token after logout
 # =============================================================================
 hdr "GET /auth/me — Revoked token after logout (expects 401)"
 run_test "me_revoked" 401 \
@@ -235,7 +278,7 @@ run_test "me_revoked" 401 \
   -H "X-Request-Id: req-me-004" \
 
 # =============================================================================
-# 13. REFRESH — revoked tokens after logout
+# 17. REFRESH — revoked tokens after logout
 # =============================================================================
 hdr "POST /auth/refresh — Revoked tokens after logout (expects 401)"
 run_test "refresh_revoked" 401 \
@@ -247,7 +290,7 @@ run_test "refresh_revoked" 401 \
 # =============================================================================
 
 # =============================================================================
-# 14. UPDATE USER — PUT /auth/user/{user_id}
+# 18. UPDATE USER — PUT /auth/user/{user_id}
 # =============================================================================
 hdr "PUT /auth/user/{user_id} — Update user (no token)"
 
@@ -266,7 +309,7 @@ else
 fi
 
 # =============================================================================
-# 15. DELETE USER — DELETE /auth/user/{user_id}
+# 19. DELETE USER — DELETE /auth/user/{user_id}
 # =============================================================================
 hdr "DELETE /auth/user/{user_id} — Delete user (no token)"
 if [ -z "$USER_ID" ] || [ "$USER_ID" = "null" ]; then
@@ -280,7 +323,7 @@ fi
 # Summary
 # =============================================================================
 sep
-TOTAL=15
+TOTAL=19
 PASSED=$((TOTAL - FAILURES))
 echo -e "\n${YELLOW}Results:${NC} ${GREEN}${PASSED} passed${NC} · ${RED}${FAILURES} failed${NC} · ${TOTAL} total\n"
 
