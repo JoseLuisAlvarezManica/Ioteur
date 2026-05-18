@@ -56,12 +56,10 @@ def must_be_logged_in(route):
         try:
             public_key = _wrap_pem(settings.PUBLIC_KEY, "PUBLIC KEY")
             payload = jwt.decode(token, public_key, algorithms=[ALGORITHM])
-            username = payload.get("sub")
-            phone_number = payload.get("phone_number")
+            user_id = payload.get("sub")
             role = payload.get("role")
             request.state.auth_headers = {"Authorization": authorization}
-            request.state.username = username
-            request.state.phone_number = phone_number
+            request.state.user_id = user_id
             request.state.role = role
         except JWTError:
             raise HTTPException(
@@ -138,12 +136,10 @@ def must_be_admin(route):
         try:
             public_key = _wrap_pem(settings.PUBLIC_KEY, "PUBLIC KEY")
             payload = jwt.decode(token, public_key, algorithms=[ALGORITHM])
-            username = payload.get("sub")
-            phone_number = payload.get("phone_number")
+            user_id = payload.get("sub")
             role = payload.get("role")
             request.state.auth_headers = {"Authorization": authorization}
-            request.state.username = username
-            request.state.phone_number = phone_number
+            request.state.user_id = user_id
             request.state.role = role
         except JWTError:
             raise HTTPException(

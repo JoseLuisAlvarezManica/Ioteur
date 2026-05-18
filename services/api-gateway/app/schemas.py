@@ -58,7 +58,6 @@ class UserIdResponse(BaseModel):
 
 
 class RegisterDevice(BaseModel):
-    user_id: str
     device_name: str
     mac_address: str
     report_interval: int
