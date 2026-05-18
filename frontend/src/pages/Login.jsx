@@ -144,7 +144,7 @@ function Login() {
 
           {/* Links */}
           <div className="flex flex-col items-center gap-2 text-gray-500 text-sm mt-2">
-            <a href="#" className="hover:text-purple-600 transition-colors">¿Olvidaste tu contraseña?</a>
+            {/* <a href="#" className="hover:text-purple-600 transition-colors">¿Olvidaste tu contraseña?</a> */}
             <span>
               ¿No tienes una cuenta?{" "}
               <Link to="/register" className="font-semibold text-purple-600 hover:text-purple-800 transition-colors">Regístrate</Link>

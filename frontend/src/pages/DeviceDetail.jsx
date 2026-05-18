@@ -19,6 +19,7 @@ function DeviceDetail() {
   const [reportMsg, setReportMsg] = useState(null);
   const [deleting, setDeleting]   = useState(false);
   const [filter, setFilter]       = useState("all");
+  const [showEditModal, setShowEditModal] = useState(false);
 
   useEffect(() => {
     // Si todavía no hay dispositivos, los refrescamos (por si el usuario entró directo a la url)
@@ -59,6 +60,7 @@ function DeviceDetail() {
     setDeleting(true);
     try {
       await devicesApi.delete(id);
+      await fetchDevices();
       navigate("/dashboard");
     } catch (err) {
       alert(err.message);
@@ -72,7 +74,7 @@ function DeviceDetail() {
       const updated = await devicesApi.updateStatus(id, newStatus);
       // Puesto que usamos AppContext, deberíamos recargarlo... 
       // pero por ahora actualizamos visualmente copiando o llamando a fetchDevices:
-      fetchDevices();
+      await fetchDevices();
       setDevice(prev => ({ ...prev, status: newStatus }));
     } catch (err) {
       alert(err.message);
@@ -100,38 +102,42 @@ function DeviceDetail() {
   return (
     <AppLayout pageTitle={`Dispositivos (${device.device_name})`}>
       <UserBar />
-      <FilterBar filter={filter} setFilter={setFilter} />
 
       {/* Device info card */}
       <div className="bg-white border border-gray-200 rounded-2xl p-6 mb-4">
-        <h2 className="text-xl font-bold text-gray-900 mb-1">Dispositivos</h2>
-        <p className="text-base font-semibold text-gray-800 mb-4">
-          {device.device_name}
-        </p>
+        <h2 className="text-xl font-bold text-purple-900 mb-5 bg-gray-100 p-2 pl-6 rounded-lg">Vista Detallada de Dispositivos</h2>
+        
 
-        <div className="flex gap-6">
-          {/* Image placeholder */}
-          <div className="w-52 h-44 bg-gray-200 rounded-xl flex-shrink-0 flex items-center justify-center">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.5">
-              <rect x="2" y="3" width="20" height="14" rx="2"/>
-              <line x1="8" y1="21" x2="16" y2="21"/>
-              <line x1="12" y1="17" x2="12" y2="21"/>
-            </svg>
-          </div>
+        <div className="flex gap-6 items-center mx-4">
+          {/* Icon */}
+          <div
+              className="w-14 h-14"
+              style={{
+                backgroundColor: device?.color ?? "#d60404",
+                WebkitMaskImage: `url(/${device?.icon ?? "casa"}.svg)`,
+                WebkitMaskSize: "contain",
+                WebkitMaskRepeat: "no-repeat",
+                WebkitMaskPosition: "center",
+                maskImage: `url(/${device?.icon ?? "casa"}.svg)`,
+                maskSize: "contain",
+                maskRepeat: "no-repeat",
+                maskPosition: "center",
+              }}
+            />
 
           {/* Info */}
           <ul className="flex flex-col justify-center gap-3 text-sm text-gray-800">
-            <li><span className="font-bold">Name:</span> {device.device_name}</li>
-            <li><span className="font-bold">MAC Address:</span> {device.mac_address}</li>
+            <li><span className="font-bold">Nombre:</span> {device.device_name}</li>
+            <li><span className="font-bold">Dirección MAC:</span> {device.mac_address}</li>
             <li><span className="font-bold">UUID:</span> {device.device_uuid}</li>
             <li>
-              <span className="font-bold">Last seen:</span>{" "}
+              <span className="font-bold">Última vez visto:</span>{" "}
               {device.last_seen
                 ? new Date(device.last_seen).toLocaleString()
-                : "Never"}
+                : "Nunca visto"}
             </li>
             <li className="flex items-center gap-2">
-              <span className="font-bold">Status:</span>
+              <span className="font-bold">Estado:</span>
               <span>{isActive ? "Active" : "Inactive"}</span>
               <span className={`w-3 h-3 rounded-full ${
                 isActive ? "bg-green-500" : "bg-red-500"
@@ -140,7 +146,13 @@ function DeviceDetail() {
                 onClick={handleToggleStatus}
                 className="ml-2 text-xs text-gray-500 underline hover:text-gray-700"
               >
-                {isActive ? "Deactivate" : "Activate"}
+                {isActive ? "Desactivar" : "Activar"}
+              </button>
+              <button
+                onClick={() => setShowEditModal(true)}
+                className="ml-2 text-xs text-blue-500 underline hover:text-blue-700 font-medium"
+              >
+                Editar
               </button>
             </li>
           </ul>
@@ -149,18 +161,30 @@ function DeviceDetail() {
 
       {/* Recent Data */}
       <div className="bg-white border border-gray-200 rounded-2xl p-6 mb-4">
-        <h3 className="text-base font-bold text-gray-900 mb-3">Recent Data</h3>
+        <h3 className="text-base font-bold text-gray-900 mb-3">Ultimas Mediciones</h3>
         {records.length === 0 ? (
-          <p className="text-sm text-gray-400">No records yet.</p>
+          <div className="bg-gray-50 rounded-xl p-6 text-sm text-gray-600 font-mono">
+            <p className="mb-2 text-gray-500 font-sans font-medium">Envía un registro con este formato a la siguiente ruta <span className="font-bold text-purple-700 bg-purple-100 mx-4 px-2 py-0.5 rounded">POST /registers/received</span>: </p>
+            <pre className="bg-gray-800 text-green-400 p-4 rounded-lg overflow-x-auto">
+              {`{
+                "device_id": "${device.device_uuid}",
+                "time_procesing": 12,
+                "values": {
+                  "temperatura": 24.5,
+                  "humedad": 60
+                }
+              }`}
+            </pre>
+          </div>
         ) : (
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr>
                 <th className="border border-gray-300 px-4 py-2 text-center font-semibold text-gray-800">
-                  Timestamp
+                  Hora
                 </th>
                 <th className="border border-gray-300 px-4 py-2 text-center font-semibold text-gray-800">
-                  Payload
+                  Contenido
                 </th>
               </tr>
             </thead>
@@ -199,18 +223,153 @@ function DeviceDetail() {
           onClick={handleRequestReport}
           className="px-5 py-2 rounded-full border border-gray-400 text-sm font-medium text-gray-700 hover:bg-gray-50"
         >
-          Request Report
+          Solicitar Reporte
         </button>
         <button
           onClick={handleDelete}
           disabled={deleting}
           className="px-5 py-2 rounded-full bg-red-500 text-white text-sm font-semibold hover:bg-red-600 disabled:opacity-60"
         >
-          {deleting ? "Deleting..." : "Delete Device"}
+          {deleting ? "Eliminando..." : "Eliminar Dispositivo"}
         </button>
       </div>
+
+      {showEditModal && (
+        <EditDeviceModal
+          device={device}
+          onClose={() => setShowEditModal(false)}
+          onUpdated={() => {
+            setShowEditModal(false);
+            fetchDevices();
+          }}
+        />
+      )}
     </AppLayout>
   );
 }
 
 export default DeviceDetail;
+function EditDeviceModal({ device, onClose, onUpdated }) {
+  const { groups } = useAppContext();
+  const [group, setGroup] = useState(device.group || "");
+  const [interval, setInterval] = useState(device.report_interval || "60");
+  const [color, setColor] = useState(device.color || "#6B7280");
+  const [icon, setIcon] = useState(device.icon || "sensor");
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const colors = ["#6B7280", "#EF4444", "#F59E0B", "#10B981", "#3B82F6", "#9f1cd3"];
+  const icons = ["radar", "sensor", "vehículo", "casa"];
+
+  const handleSubmit = async () => {
+    if (!interval) {
+      setError("El intervalo es requerido.");
+      return;
+    }
+
+    setError(null);
+    setLoading(true);
+
+    try {
+      await devicesApi.update({
+        device_uuid: device.device_uuid,
+        report_interval: interval,
+        color,
+        icon,
+        group,
+      });
+
+      onUpdated();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+      <div className="bg-white rounded-2xl p-8 w-full max-w-md shadow-xl">
+        <h2 className="text-xl font-bold text-gray-900 mb-5">Editar Dispositivo</h2>
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-600 text-sm px-3 py-2 rounded-xl mb-4">
+            {error}
+          </div>
+        )}
+      
+        <div className="flex flex-col gap-4 mb-6">
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-700">Grupo</label>
+            <input
+              list="edit-groups-list"
+              value={group}
+              onChange={(e) => setGroup(e.target.value)}
+              className="border border-gray-300 rounded-xl px-4 py-3 text-sm focus:border-purple-400 focus:ring-1 focus:ring-purple-100 transition-colors"
+              placeholder="Asignar a un grupo"
+            />
+            <datalist id="edit-groups-list">
+              {groups.map((g) => (
+                <option key={g} value={g} />
+              ))}
+            </datalist>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-700">Intervalo de reporte (segundos)</label>
+            <input
+              type="number"
+              min="1"
+              value={interval}
+              onChange={(e) => setInterval(e.target.value)}
+              className="border border-gray-300 rounded-xl px-4 py-3 text-sm focus:border-purple-400 focus:ring-1 focus:ring-purple-100 transition-colors"
+            />
+          </div>
+
+          <div className="mt-2">
+            <label className="text-sm font-medium text-gray-700 mb-2 block">Icono</label>
+            <div className="grid grid-cols-4 gap-2">
+              {icons.map((i) => (
+                <button
+                  key={i}
+                  onClick={() => setIcon(i)}
+                  className={`flex items-center justify-center p-2 rounded-xl border ${
+                    icon === i ? "border-purple-700 border-2 bg-gray-100" : "border-gray-300 hover:bg-gray-50"
+                  }`}
+                >
+                  <img src={`/${i}.svg`} className="w-5 h-5" style={{ filter: `drop-shadow(0 0 0 ${color})` }} />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-2">
+            <label className="text-sm font-medium text-gray-700 mb-2 block">Color</label>
+            <div className="flex gap-2">
+              {colors.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setColor(c)}
+                  className={`w-8 h-8 rounded-full border-4 ${
+                    color === c ? "border-purple-700" : "border-transparent"
+                  }`}
+                  style={{ backgroundColor: c }}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-3 justify-end mt-auto">
+          <button onClick={onClose} className="px-5 py-2 rounded-xl border border-gray-300 text-sm">
+            Cancelar
+          </button>
+          <button onClick={handleSubmit} disabled={loading} className="px-5 py-2 rounded-xl bg-purple-700 text-white text-sm">
+            {loading ? "Guardando..." : "Guardar"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+

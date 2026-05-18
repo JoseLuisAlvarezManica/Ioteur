@@ -18,6 +18,7 @@ class Device(Base):
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")
     icon: Mapped[str] = mapped_column(String(50), nullable=True, default="sensor")
     color: Mapped[str] = mapped_column(String(20), nullable=True, default="#000000")
+    group: Mapped[str] = mapped_column(String(50), nullable=True)
     last_seen: Mapped[Interval] = mapped_column(Interval, nullable=True)
     created_at: Mapped[DateTime] = mapped_column(
         DateTime, nullable=False, default=datetime.now()

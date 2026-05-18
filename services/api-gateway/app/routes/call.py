@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 from typing import Annotated
-
+import re
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 
 from ..config import settings
@@ -15,6 +15,7 @@ router = APIRouter(tags=["call"])
 
 call_dep = Annotated[CallClient, Depends(get_call_client)]
 
+MAC_ADDRESS_REGEX = re.compile(r"^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$")
 
 async def verify_internal_key(
     x_internal_key: Annotated[str | None, Header()] = None,
@@ -33,6 +34,11 @@ async def verify_internal_key(
 )
 @must_be_logged_in
 async def register_device(request: Request, body: RegisterDevice, client: call_dep):
+    if not MAC_ADDRESS_REGEX.match(body.mac_address):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid MAC address format. Expected format: XX:XX:XX:XX:XX:XX",
+        )
     code, data = await client.post("/devices/register", body.model_dump())
     if code != status.HTTP_202_ACCEPTED:
         raise HTTPException(status_code=code, detail=data)
@@ -46,6 +52,11 @@ async def register_device(request: Request, body: RegisterDevice, client: call_d
 )
 @must_be_logged_in
 async def update_device(request: Request, body: UpdateDevice, client: call_dep):
+    if not MAC_ADDRESS_REGEX.match(body.mac_address):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid MAC address format. Expected format: XX:XX:XX:XX:XX:XX",
+        )
     code, data = await client.put("/devices/update", body.model_dump(exclude_none=True))
     if code != status.HTTP_202_ACCEPTED:
         raise HTTPException(status_code=code, detail=data)

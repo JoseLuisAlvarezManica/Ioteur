@@ -10,6 +10,11 @@ import DeviceDetail  from "./pages/DeviceDetail";
 import Notifications from "./pages/Notifications";
 import Reports       from "./pages/Reports";
 
+// Admin Pages
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminUsers     from "./pages/admin/AdminUsers";
+import AdminDevices   from "./pages/admin/AdminDevices";
+
 function App() {
   return (
     <AuthProvider>
@@ -22,9 +27,6 @@ function App() {
           <Route path="/dashboard" element={
             <ProtectedRoute><Dashboard /></ProtectedRoute>
           } />
-          <Route path="/devices" element={
-            <Navigate to="/dashboard" replace />
-          } />
           <Route path="/devices/:id" element={
             <ProtectedRoute><DeviceDetail /></ProtectedRoute>
           } />
@@ -33,6 +35,22 @@ function App() {
           } />
           <Route path="/reports" element={
             <ProtectedRoute><Reports /></ProtectedRoute>
+          } />
+
+          {/* Admin Routes */}
+          <Route path="/admin" element={
+            <ProtectedRoute requiredRole="admin">
+              <Navigate to="/admin/dashboard" replace />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/dashboard" element={
+            <ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>
+          } />
+          <Route path="/admin/users" element={
+            <ProtectedRoute requiredRole="admin"><AdminUsers /></ProtectedRoute>
+          } />
+          <Route path="/admin/devices" element={
+            <ProtectedRoute requiredRole="admin"><AdminDevices /></ProtectedRoute>
           } />
         </Routes>
       </BrowserRouter>

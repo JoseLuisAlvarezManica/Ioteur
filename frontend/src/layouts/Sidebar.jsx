@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useAppContext } from "../context/AppContext";
+import { AddDeviceModal } from "../pages/Dashboard";
 
 const HomeIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -34,19 +36,25 @@ const DeviceSmIcon = () => (
 
 function Sidebar() {
   const { user } = useAuth();
-  const { devices } = useAppContext();
+  const { devices, fetchDevices } = useAppContext();
   const navigate = useNavigate();
   const location = useLocation();
+  const [showModal, setShowModal] = useState(false);
 
   const navItems = [
-    { label: "Home", icon: <HomeIcon />, path: "/dashboard" },
-    { label: "Devices", icon: <DevicesIcon />, path: "/devices" },
-    { label: "Reports", icon: <ReportsIcon />, path: "/reports" },
-    { label: "Notifications", icon: <BellIcon />, path: "/notifications" },
+    { label: "Inicio", icon: <HomeIcon />, path: "/dashboard" },
+    { label: "Reportes", icon: <ReportsIcon />, path: "/reports" },
+    { label: "Notificaciones", icon: <BellIcon />, path: "/notifications" },
+  ];
+
+  const adminNavItems = [
+    { label: "Panel de Administrador", icon: <HomeIcon />, path: "/admin/dashboard" },
+    { label: "Gestionar Usuarios", icon: <DevicesIcon />, path: "/admin/users" },
+    { label: "Gestionar Dispositivos", icon: <DeviceSmIcon />, path: "/admin/devices" },
   ];
 
   return (
-    <aside className="w-64 bg-gray-100 rounded-2xl p-5 flex flex-col gap-4 self-start min-h-[600px]">
+    <aside className={`w-64 bg-gray-100 rounded-2xl p-5 flex flex-col gap-4 self-start max-h-full overflow-y-auto`}>
       {/* Logo */}
 <div className="flex items-center gap-3 mb-2">
   <div className="w-10 h-10 border-2 border-gray-800 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -75,7 +83,7 @@ function Sidebar() {
               key={item.label}
               onClick={() => navigate(item.path)}
               className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-left transition-colors ${
-                active ? "text-black font-semibold" : "text-gray-500 hover:text-gray-700"
+                active ? "text-black font-semibold bg-purple-200" : "text-gray-500 hover:text-gray-700"
               }`}
             >
               {item.icon}
@@ -85,14 +93,43 @@ function Sidebar() {
         })}
       </nav>
 
+      {user?.role === "admin" && (
+        <div className="mt-4 pt-4 border-t border-gray-200">
+          <p className="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Admin</p>
+          <nav className="flex flex-col gap-1">
+            {adminNavItems.map((item) => {
+              const active = location.pathname === item.path;
+              return (
+                <button
+                  key={item.label}
+                  onClick={() => navigate(item.path)}
+                  className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-left transition-colors ${
+                    active ? "text-red-700 font-semibold bg-red-50" : "text-gray-500 hover:text-red-600 hover:bg-red-50"
+                  }`}
+                >
+                  {item.icon}
+                  {item.label}
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+      )}
+
       {/* Dispositivos expandable */}
       <div className="mt-1">
         <div className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 font-medium">
           <DevicesIcon />
           <span>Dispositivos</span>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="ml-auto">
-            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
-          </svg>
+          <button 
+            onClick={() => setShowModal(true)}
+            className="ml-auto hover:text-black transition-colors"
+            title="Agregar dispositivo"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="cursor-pointer">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
+            </svg>
+          </button>
         </div>
         <div className="flex flex-col gap-1 ml-3 mt-1">
           {devices.map((device) => {
@@ -102,7 +139,7 @@ function Sidebar() {
                 key={device.device_uuid}
                 onClick={() => navigate(`/devices/${device.device_uuid}`)}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-left transition-colors ${
-                  active ? "text-black font-semibold" : "text-gray-500 hover:text-gray-700"
+                  active ? "text-black font-semibold bg-purple-200" : "text-gray-500 hover:text-gray-700"
                 }`}
               >
                 <DeviceSmIcon />
@@ -112,6 +149,17 @@ function Sidebar() {
           })}
         </div>
       </div>
+
+      {showModal && (
+        <AddDeviceModal
+          userId={user?.id}
+          onClose={() => setShowModal(false)}
+          onAdded={() => {
+            setShowModal(false);
+            fetchDevices();
+          }}
+        />
+      )}
     </aside>
   );
 }

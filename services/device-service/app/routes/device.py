@@ -17,6 +17,9 @@ def _to_response(device: Device) -> Device_Register_Response:
         mac_address=device.mac_address,
         report_interval=device.report_interval,
         status=device.status,
+        icon=device.icon,
+        color=device.color,
+        group=device.group,
     )
 
 

@@ -9,6 +9,8 @@ import { useAppContext } from "../context/AppContext";
 function DeviceCard({ device, onClick }) {
   const hasData = !!device.device_name;
 
+  const icon = device.icon || "sensor";
+
   return (
     <div
       onClick={() => hasData && onClick(device.device_uuid)}
@@ -17,46 +19,108 @@ function DeviceCard({ device, onClick }) {
       }`}
     >
       {hasData && (
-        <div className="absolute bottom-3 left-3">
-          <p className="text-sm font-semibold text-gray-900">{device.device_name}</p>
-          <div className="flex items-center gap-1 mt-0.5">
-            <span className={`w-2 h-2 rounded-full ${
-              device.status === "active" ? "bg-green-500" : "bg-red-500"
-            }`} />
-            <span className={`text-xs font-medium ${
-              device.status === "active" ? "text-green-600" : "text-red-500"
-            }`}>
-              {device.status === "active" ? "Active" : "Inactive"}
-            </span>
+        <>
+          {/* ICONO CENTRADO */}
+          <div className="absolute inset-0 flex items-center justify-center ">
+            <div className="p-2 bg-gray-100/50 rounded-xl">
+              <div
+              className="w-14 h-14"
+              style={{
+                backgroundColor: device?.color ?? "#d60404",
+                WebkitMaskImage: `url(/${device?.icon ?? "casa"}.svg)`,
+                WebkitMaskSize: "contain",
+                WebkitMaskRepeat: "no-repeat",
+                WebkitMaskPosition: "center",
+                maskImage: `url(/${device?.icon ?? "casa"}.svg)`,
+                maskSize: "contain",
+                maskRepeat: "no-repeat",
+                maskPosition: "center",
+              }}
+            />
+            </div>
           </div>
-          <p className="text-xs text-gray-500 mt-0.5">
-            Last seen: {device.last_seen
-              ? new Date(device.last_seen).toLocaleString()
-              : "Never"}
-          </p>
-        </div>
+
+          {/* INFO ABAJO */}
+          <div className="absolute bottom-3 left-3">
+            <p className="text-sm font-semibold text-gray-900">
+              {device.device_name}
+            </p>
+
+            <div className="flex items-center gap-1 mt-0.5">
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  device.status === "active"
+                    ? "bg-green-500"
+                    : "bg-red-500"
+                }`}
+              />
+              <span
+                className={`text-xs font-medium ${
+                  device.status === "active"
+                    ? "text-green-600"
+                    : "text-red-500"
+                }`}
+              >
+                {device.status === "active" ? "Activo" : "Inactivo"}
+              </span>
+            </div>
+
+            <p className="text-xs text-gray-500 mt-0.5">
+              Última vez visto:{" "}
+              {device.last_seen
+                ? new Date(device.last_seen).toLocaleString()
+                : "No hay información"}
+            </p>
+          </div>
+        </>
       )}
     </div>
   );
 }
 
 /* ── Add Device Modal ────────────────────────────────────────── */
-function AddDeviceModal({ userId, onClose, onAdded }) {
-  const [name, setName]       = useState("");
-  const [mac, setMac]         = useState("");
+export function AddDeviceModal({ userId, onClose, onAdded }) {
+  const [name, setName] = useState("");
+  const { groups } = useAppContext();
+  const [mac, setMac] = useState("");
+  const [group, setGroup] = useState(groups[0] || ""); // Default al primer grupo o vacío
   const [interval, setInterval] = useState("60");
-  const [error, setError]     = useState(null);
+  const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  const [color, setColor] = useState("#6B7280"); // gray default
+  const [icon, setIcon] = useState("sensor");
+
+  const colors = [
+    "#6B7280", // default (gray)
+    "#EF4444", // red
+    "#F59E0B", // amber
+    "#10B981", // green
+    "#3B82F6", // blue
+    "#9f1cd3", // purple
+  ];
+
+  const icons = ["radar", "sensor", "vehículo", "casa"];
 
   const handleSubmit = async () => {
     if (!name.trim() || !mac.trim() || !interval) {
       setError("Todos los campos son requeridos.");
       return;
     }
+
     setError(null);
     setLoading(true);
+
     try {
-      const newDevice = await devicesApi.create({ userId, name, macAddress: mac, reportInterval: interval });
+      const newDevice = await devicesApi.create({
+        userId,
+        name,
+        macAddress: mac,
+        reportInterval: interval,
+        color,
+        icon,
+      });
+
       onAdded(newDevice);
       onClose();
     } catch (err) {
@@ -68,38 +132,66 @@ function AddDeviceModal({ userId, onClose, onAdded }) {
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl p-8 w-full max-w-md shadow-xl">
-        <h2 className="text-xl font-bold text-gray-900 mb-5">Add Device</h2>
+      <div className="bg-white rounded-2xl p-8 w-full max-w-md md:max-w-2xl shadow-xl">
+
+        <h2 className="text-xl font-bold text-gray-900 mb-5">
+          Add Device
+        </h2>
 
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-600 text-sm px-3 py-2 rounded-xl mb-4">
             {error}
           </div>
         )}
+      
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
+          
+          {/* PRIMERA COLUMNA */}
+          <div className="flex flex-col gap-4">
 
-        <div className="flex flex-col gap-4 mb-6">
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">Device name</label>
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium text-gray-700">Device name</label>
             <input
-              type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="border border-gray-300 rounded-xl px-4 py-3 text-sm outline-none w-full focus:border-purple-400 focus:ring-1 focus:ring-purple-100 transition-colors"
-              placeholder="Mi sensor de temperatura"
+              className="border border-gray-300 rounded-xl px-4 py-3 text-sm w-full"
+            placeholder="Mi sensor de temperatura"
             />
           </div>
+
+          {/* MAC */}
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">MAC Address</label>
+            <label className="text-sm font-medium text-gray-700">MAC</label>
             <input
-              type="text"
               value={mac}
               onChange={(e) => setMac(e.target.value)}
-              className="border border-gray-300 rounded-xl px-4 py-3 text-sm outline-none font-mono w-full focus:border-purple-400 focus:ring-1 focus:ring-purple-100 transition-colors"
-              placeholder="AA:BB:CC:DD:EE:FF"
+              className="border border-gray-300 rounded-xl px-4 py-3 text-sm font-mono"
+            placeholder="AA:BB:CC:DD:EE:FF"
             />
           </div>
+
+          {/* GROUP */}
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">Intervalo de mediciones (segundos)</label>
+            <label className="text-sm font-medium text-gray-700">Grupo</label>
+            <input
+              list="groups-list"
+              value={group}
+              onChange={(e) => setGroup(e.target.value)}
+              className="border border-gray-300 rounded-xl px-4 py-3 text-sm focus:border-purple-400 focus:ring-1 focus:ring-purple-100 transition-colors"
+              placeholder="Asignar a un grupo (ej. Sala)"
+            />
+            <datalist id="groups-list">
+              {groups.map((g) => (
+                <option key={g} value={g} />
+              ))}
+            </datalist>
+          </div>
+
+          {/* INTERVAL */}
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-700">
+              Intervalo de reporte (segundos)
+            </label>
             <input
               type="number"
               min="1"
@@ -112,23 +204,97 @@ function AddDeviceModal({ userId, onClose, onAdded }) {
               Esto nos ayudará a saber si el dispositivo tiene problemas.
             </p>
           </div>
+          </div>
+
+          {/* SEGUNDA COLUMNA */}
+          <div className="flex flex-col gap-4">
+
+            {/* ICON SELECTOR */}
+            <div className="col-span-2">
+              <label className="text-sm font-medium text-gray-700 mb-2 block">
+                Icono
+              </label>
+
+            <div className="grid grid-cols-2 gap-2">
+              {icons.map((i) => (
+                <button
+                  key={i}
+                  onClick={() => setIcon(i)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm capitalize ${
+                    icon === i
+                      ? "border-purple-700 border-2 bg-gray-100"
+                      : "border-gray-300 hover:bg-gray-50"
+                  }`}
+                >
+                  <img
+                    src={`/${i}.svg`}
+                    className="w-5 h-5"
+                    style={{ filter: `drop-shadow(0 0 0 ${color})` }}
+                  />
+                  {i}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* COLOR SELECTOR */}
+          <div className="col-span-2">
+            <label className="text-sm font-medium text-gray-700 mb-2 block">
+              Color
+            </label>
+
+            <div className="grid grid-cols-6 gap-1">
+              {colors.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setColor(c)}
+                  className={`w-10 h-10 rounded-full border-4 ${
+                    color === c ? "border-purple-700" : "border-transparent"
+                  }`}
+                  style={{ backgroundColor: c }}
+                />))}
+            </div>
+          </div>
+
+          <div className="col-span-2 flex items-center gap-3 mt-2">
+            <div
+              className="w-14 h-14"
+              style={{
+                backgroundColor: color,
+                WebkitMaskImage: `url(/${icon}.svg)`,
+                WebkitMaskSize: "contain",
+                WebkitMaskRepeat: "no-repeat",
+                WebkitMaskPosition: "center",
+                maskImage: `url(/${icon}.svg)`,
+                maskSize: "contain",
+                maskRepeat: "no-repeat",
+                maskPosition: "center",
+              }}
+            />
+            <span className="text-sm text-gray-600">Preview del icono</span>
+          </div>
+              
+          {/* ACTIONS */}
+          <div className="flex gap-3 justify-end mt-auto col-span-2">
+            <button
+              onClick={onClose}
+              className="px-5 py-2 rounded-xl border border-gray-300 text-sm"
+            >
+              Cancel
+            </button>
+
+            <button
+              onClick={handleSubmit}
+              disabled={loading}
+              className="px-5 py-2 rounded-xl bg-purple-700 text-white text-sm"
+            >
+              {loading ? "Adding..." : "Add"}
+            </button>
+          </div>
+          </div>
+          
         </div>
 
-        <div className="flex gap-3 justify-end">
-          <button
-            onClick={onClose}
-            className="px-5 py-2 rounded-xl border border-gray-300 text-sm text-gray-600 hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="px-5 py-2 rounded-xl bg-gray-900 text-white text-sm font-medium hover:bg-gray-700 disabled:opacity-60"
-          >
-            {loading ? "Adding..." : "Add"}
-          </button>
-        </div>
       </div>
     </div>
   );
@@ -137,7 +303,7 @@ function AddDeviceModal({ userId, onClose, onAdded }) {
 /* ── Dashboard ───────────────────────────────────────────────── */
 function Dashboard() {
   const { user } = useAuth();
-  const { devices, loadingDevices: loading, errorDevices: error, fetchDevices } = useAppContext();
+  const { devices, groups, loadingDevices: loading, errorDevices: error, fetchDevices } = useAppContext();
   const [filter, setFilter]       = useState("all");
   const [showModal, setShowModal] = useState(false);
   const navigate = useNavigate();

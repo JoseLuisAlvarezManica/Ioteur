@@ -10,6 +10,7 @@ class RegisterDeviceRequest(BaseModel):
     report_interval: int
     icon: str | None = "sensor"
     color: str | None = "#000000"
+    group: str | None = None
 
 
 class UpdateDeviceRequest(BaseModel):
@@ -18,6 +19,7 @@ class UpdateDeviceRequest(BaseModel):
     status: str | None = None
     icon: str | None = None
     color: str | None = None
+    group: str | None = None
 
 
 class RegisterReceivedRequest(BaseModel):
