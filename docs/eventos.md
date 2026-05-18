@@ -105,19 +105,19 @@ Los consumidores utilizan:
 
 ### `device.disconnected`
 
-**Publicado por:** *(sin publicador definido actualmente — el evento es esperado por el sistema pero ningún servicio lo emite en el código actual)*  
+**Publicado por:** Call Service (scheduler de inactividad)  
 **Consumido por:** Notification Service  
 **Queue:** `notification.device.disconnected`  
-**Descripción:** Evento previsto para cuando se detecte que un dispositivo superó su `report_interval` sin enviar datos. El Notification Service está preparado para recibirlo: envía un correo al usuario y registra la alerta en MongoDB.
+**Descripción:** Se publica cuando el scheduler del Call Service detecta que un dispositivo superó su umbral de inactividad (calculado como `report_interval × 3`) sin enviar telemetría. El Call Service marca el dispositivo como `inactive` en Redis, publica el evento `device.update` para sincronizar el Device Service, y publica `device.disconnected` para que el Notification Service envíe un correo de alerta al usuario y registre la notificación en MongoDB.
 
 **Payload:**
 ```json
 {
   "device_id": "uuid-del-dispositivo",
   "email": "usuario@example.com",
-  "reason": "missed_intervals",
+  "reason": "inactivity_timeout",
   "severity": "warning",
-  "message": "3 consecutive heartbeats missed."
+  "message": "Device 'ESP32-1' has not sent telemetry for 189s (threshold: 90s). It has been marked as inactive."
 }
 ```
 
@@ -125,9 +125,9 @@ Los consumidores utilizan:
 |---|---|---|
 | `device_id` | UUID string | Dispositivo desconectado |
 | `email` | string | Correo del usuario propietario |
-| `reason` | string | Razón de la desconexión |
+| `reason` | string | Razón de la desconexión (`inactivity_timeout`) |
 | `severity` | string | `info` / `warning` / `critical` |
-| `message` | string | Mensaje descriptivo para el correo |
+| `message` | string | Mensaje descriptivo con tiempo de inactividad y umbral |
 
 ---
 

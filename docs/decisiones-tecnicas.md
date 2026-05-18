@@ -163,6 +163,29 @@
 
 ---
 
+## DT-11 — Scheduler de Inactividad Colocado en el Call Service
+
+**Decisión:** Implementar el scheduler de detección de inactividad de dispositivos dentro del Call Service, en lugar de crear un servicio independiente dedicado.
+
+**Contexto:** El sistema necesita detectar periódicamente qué dispositivos han dejado de enviar telemetría (superaron su `report_interval × 3` sin heartbeat) y publicar el evento `device.disconnected` para que el Notification Service envíe la alerta al usuario.
+
+**Razones:**
+- El Call Service ya es el único propietario del estado en caliente de los dispositivos en Redis (`device:<uuid>`). Colocar el scheduler allí elimina la necesidad de exponer ese estado a otro servicio vía HTTP o mensajería.
+- El scheduler necesita leer y escribir los campos `status` y `ultima_vez_log` de cada dispositivo, operaciones que el Call Service ya realiza en cada heartbeat recibido. Extraer esa lógica a un servicio externo duplicaría el acceso a Redis desde dos procesos distintos, introduciendo potenciales condiciones de carrera.
+- El scheduler se inicia dentro del mismo proceso asyncio de FastAPI mediante `asyncio.create_task`, lo que le permite compartir la conexión a Redis y el canal RabbitMQ sin infraestructura adicional.
+- Crear un servicio separado solo para ejecutar un loop periódico agrega un contenedor, una imagen Docker, una entrada en `docker-compose.yml`, variables de entorno y un healthcheck, aumentando la complejidad operativa sin ningún beneficio de escalabilidad (el scheduler no necesita más de una réplica).
+
+**Alternativas consideradas:**
+- **Servicio `heartbeat-service` independiente:** añadiría aislamiento de fallos, pero requeriría compartir acceso a Redis con el Call Service o introducir un nuevo endpoint interno para consultar el estado de los dispositivos, duplicando la lógica de dominio.
+- **Celery + Redis como broker de tareas:** adecuado para tareas distribuidas de alta escala; excesivo para un único loop de 120 segundos.
+- **Cron job en el host / contenedor sidecar:** introduce dependencia de infraestructura externa y dificulta el manejo de señales de apagado junto al ciclo de vida del proceso FastAPI.
+
+**Consecuencias:**
+- Si el Call Service se reinicia, el scheduler también se reinicia con él; el período máximo de ceguera ante inactividades es el intervalo del loop (120 segundos por defecto).
+- En un entorno con múltiples réplicas del Call Service se deberían coordinar los schedulers (e.g., con un lock distribuido en Redis) para evitar notificaciones duplicadas. En el scope actual de una sola réplica esto no representa un problema.
+
+---
+
 ## DT-10 — Docker Compose Multi-Archivo por Entorno
 
 **Decisión:** Usar un `docker-compose.yml` base y archivos de override separados por entorno (`dev`, `staging`, `prod`).

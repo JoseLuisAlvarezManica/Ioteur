@@ -127,6 +127,151 @@ La evidencia de ejecución manual se encuentra en [`evidence/postman/Evidencia_P
 
 ---
 
+## Prueba Manual — Ciclo Activo / Inactivo de Dispositivo
+
+Esta prueba verifica de forma manual el flujo completo de detección de inactividad: desde que un dispositivo deja de reportar telemetría hasta que el sistema lo marca como `inactive`, publica el evento `device.disconnected` y el Notification Service envía el correo de alerta.
+
+### Configuración Previa
+
+Para esta prueba se registró previamente un usuario y un dispositivo físico (ESP32) a través del API Gateway.
+
+**Paso 1 — Obtener la MAC del ESP32:**
+
+Se cargó el siguiente sketch en el ESP32 para leer su dirección MAC por puerto serie:
+
+```cpp
+#include <WiFi.h>
+
+void setup() {
+  Serial.begin(115200);
+
+  uint8_t mac[6];
+  WiFi.macAddress(mac);
+
+  Serial.printf("MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",
+    mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+}
+
+void loop() {}
+```
+
+La MAC obtenida fue `CC:DB:A7:94:8B:D8`, con la cual se registró el dispositivo en el sistema y se obtuvo el UUID `9e5bfdbf-8340-4c95-930a-2073a2c750fa`.
+
+**Paso 2 — Envío de telemetría desde el ESP32:**
+
+Con el UUID obtenido se programó el siguiente sketch para enviar datos periódicamente al API Gateway desde la red local (WiFi):
+
+```cpp
+#include <WiFi.h>
+#include <HTTPClient.h>
+
+const char* ssid = "MSI 9472";
+const char* password = "a1a2a3a4";
+const char* serverUrl = "http://172.18.53.251:8000/registers/received";
+
+const char* device_id = "9e5bfdbf-8340-4c95-930a-2073a2c750fa";
+const int report_interval = 30; // segundos
+
+void setup() {
+  Serial.begin(115200);
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\nWiFi conectado");
+}
+
+void loop() {
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+    http.begin(serverUrl);
+    http.addHeader("Content-Type", "application/json");
+
+    String jsonPayload = String("{") +
+      "\"device_id\":\"" + device_id + "\"," +
+      "\"time_procesing\":123," +
+      "\"values\":{" +
+        "\"temperature\":" + String(random(20, 30)) + "," +
+        "\"humidity\":" + String(random(40, 60)) +
+      "}" +
+    "}";
+
+    int httpResponseCode = http.POST(jsonPayload);
+
+    Serial.print("POST enviado, código: ");
+    Serial.println(httpResponseCode);
+    if (httpResponseCode > 0) {
+      String response = http.getString();
+      Serial.println("Respuesta: " + response);
+    } else {
+      Serial.println("Error en POST");
+    }
+    http.end();
+  } else {
+    Serial.println("WiFi no conectado");
+  }
+
+  delay(report_interval * 1000);
+}
+```
+
+El sketch envía un `POST /registers/received` cada 30 segundos con valores de temperatura y humedad aleatorios.
+
+**Dispositivo físico utilizado:**
+
+![ESP32 conectado](../evidence/screenshots/device-active-inactive/Dispositivo_IoT.jpeg)
+
+### Precondiciones
+
+- Stack completo levantado con `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build`.
+- Usuario y dispositivo `ESP32-1` registrados previamente (ver configuración previa).
+- `report_interval` del dispositivo: `30s` → umbral de inactividad: `90s`.
+- El dispositivo se encontraba con `status: inactive` en Redis por pruebas anteriores.
+
+### Pasos Ejecutados
+
+| Paso | Acción | Resultado esperado |
+|---|---|---|
+| 1 | Conectar el ESP32 (que estaba inactivo) y verificar en Redis | `status` cambia de `inactive` a `active` |
+| 2 | Confirmar que los logs del Call Service registran la reconexión | Log `device.reconnected` con restauración a `active` |
+| 3 | Detener el envío de telemetría (desconectar el ESP32) | Call Service deja de recibir heartbeats |
+| 4 | Esperar que el scheduler detecte la inactividad (≥ 90s sin telemetría) | Call Service publica `device.disconnected` y `device.update` |
+| 5 | Verificar estado en Redis tras la detección | `status: inactive` |
+| 6 | Verificar que el Notification Service recibió el evento y envió el correo | Correo recibido con `reason: inactivity_timeout` |
+| 7 | Dejar el sistema corriendo ~5 minutos sin reconectar el dispositivo | No se genera un segundo correo (un solo correo por estado de inactividad) |
+
+### Evidencia
+
+**Log del Call Service — detección y publicación:**
+```
+call-service | device.connected  | Updated device.connected for 9e5bfdbf-...
+call-service | scheduler detecta 189s sin telemetría (umbral: 90s)
+call-service | device.update (inactive) publicado a RabbitMQ
+call-service | device.disconnected publicado a RabbitMQ
+```
+
+**Redis — estado `active` (antes):**
+
+![Redis activo](../evidence/screenshots/device-active-inactive/redis_active.png)
+
+**Redis — estado `inactive` (después):**
+
+![Redis inactivo](../evidence/screenshots/device-active-inactive/redis_inactive.png)
+
+**Correo recibido (Notification Service vía EmailJS):**
+
+- **Dispositivo:** `9e5bfdbf-8340-4c95-930a-2073a2c750fa` (ESP32-1)
+- **Severidad:** `warning`
+- **Motivo:** `inactivity_timeout`
+- **Mensaje:** `"Device 'ESP32-1' has not sent telemetry for 189s (threshold: 90s). It has been marked as inactive."`
+
+![Correo inactividad](../evidence/screenshots/device-active-inactive/email_inactivity.png)
+
+**Logs del servicio:** [`evidence/logs/device-active-inactive.log`](../evidence/logs/device-active-inactive.log)
+
+---
+
 ## Evidencias
 
 | Evidencia | Ubicación |
@@ -135,3 +280,4 @@ La evidencia de ejecución manual se encuentra en [`evidence/postman/Evidencia_P
 | Colección Postman (JSON) | [`evidence/postman/Ioteur_API_Gateway.postman_collection.json`](../evidence/postman/Ioteur_API_Gateway.postman_collection.json) |
 | PDF de pruebas manuales Postman | [`evidence/postman/Evidencia_Pruebas_Postman.pdf`](../evidence/postman/Evidencia_Pruebas_Postman.pdf) |
 | Logs de ejecución Docker | [`evidence/logs/`](../evidence/logs/) |
+| Logs ciclo activo/inactivo | [`evidence/logs/device-active-inactive.log`](../evidence/logs/device-active-inactive.log) |

@@ -34,7 +34,7 @@ Ioteur elimina esa barrera ofreciendo una base lista para usar, para que el foco
 - Autenticación y gestión de usuarios con JWT (RS256) y roles (`user` / `admin`).
 - Registro y gestión de dispositivos IoT identificados por `device_uuid` y `mac_address`.
 - Ingesta de datos de telemetría en tiempo real, almacenados en MongoDB.
-- Detección de desconexión de dispositivos mediante monitoreo del último heartbeat registrado en Redis.
+- Detección de desconexión de dispositivos mediante un scheduler interno en el Call Service que monitorea el último heartbeat de cada dispositivo en Redis y publica el evento `device.disconnected` al superar el umbral de inactividad (`report_interval × 3`).
 - Generación automática de reportes con métricas por dispositivo (valor máximo, más frecuente, variación porcentual).
 - Notificaciones por correo electrónico vía EmailJS cuando un dispositivo se desconecta.
 - Registro de errores internos del sistema en MongoDB para auditoría.
@@ -281,7 +281,7 @@ Exchange: `ioteur` (direct, durable)
 | `device.register` | Call Service | Device Service | Registro de nuevo dispositivo |
 | `device.update` | Call Service | Device Service | Actualización de dispositivo |
 | `register.received` | Call Service | Register Service | Datos de telemetría recibidos |
-| `device.disconnected` | Call Service | Notification Service | Dispositivo desconectado |
+| `device.disconnected` | Call Service (scheduler) | Notification Service | Dispositivo sin telemetría superó umbral de inactividad |
 | `system.error` | Cualquier servicio | Notification Service | Error interno del sistema |
 | `telemetry.report` | Call Service | Telemetry Service | Solicitud de generación de reporte |
 | `report.created` | Telemetry Service | — | Confirmación de reporte creado |

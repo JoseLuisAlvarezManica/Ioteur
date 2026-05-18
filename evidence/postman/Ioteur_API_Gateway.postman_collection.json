@@ -8,6 +8,7 @@
     { "key": "base_url",      "value": "http://localhost:8000" },
     { "key": "access_token",  "value": "" },
     { "key": "refresh_token", "value": "" },
+    { "key": "user_id",       "value": "" },
     { "key": "device_uuid",   "value": "" }
   ],
   "item": [
@@ -34,7 +35,13 @@
               "script": {
                 "exec": [
                   "const json = pm.response.json();",
-                  "if (json.access_token)  pm.collectionVariables.set('access_token',  json.access_token);",
+                  "if (json.access_token) {",
+                  "  pm.collectionVariables.set('access_token', json.access_token);",
+                  "  try {",
+                  "    const payload = JSON.parse(atob(json.access_token.split('.')[1]));",
+                  "    if (payload.sub) pm.collectionVariables.set('user_id', payload.sub);",
+                  "  } catch(e) {}",
+                  "}",
                   "if (json.refresh_token) pm.collectionVariables.set('refresh_token', json.refresh_token);"
                 ],
                 "type": "text/javascript"
@@ -191,13 +198,25 @@
         },
         {
           "name": "Get device by user",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json && json.device_uuid) pm.collectionVariables.set('device_uuid', json.device_uuid);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
             "url": {
-              "raw": "{{base_url}}/devices/me",
+              "raw": "{{base_url}}/devices/{{user_id}}",
               "host": ["{{base_url}}"],
-              "path": ["devices", "me"]
+              "path": ["devices", "{{user_id}}"]
             }
           }
         },

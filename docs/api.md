@@ -311,6 +311,8 @@ Recibe datos de telemetría de un dispositivo.
 { "message": "register.received event queued" }
 ```
 
+**Comportamiento de reconexión automática:** Si el dispositivo estaba marcado como `inactive` en Redis (por inactividad previa detectada por el scheduler), el Call Service detecta el nuevo heartbeat, actualiza el estado a `active`, publica `device.update` para sincronizar el Device Service y luego procesa el registro normalmente.
+
 **Errores:**
 - `404 Not Found` — Dispositivo no registrado (no existe en Redis).
 - `500 Internal Server Error` — Fallo al publicar en RabbitMQ.
