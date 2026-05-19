@@ -15,6 +15,7 @@ from .routes.device import device_router
 from .routes.register import register_router
 from .routes.reports import reports_router
 from .routes.system import system_router
+from .routes.notifications import notifications_router
 
 handler = logging.StreamHandler()
 handler.setFormatter(JsonFormatter())
@@ -55,6 +56,7 @@ app.include_router(device_router)
 app.include_router(register_router)
 app.include_router(reports_router)
 app.include_router(system_router)
+app.include_router(notifications_router)
 
 
 @app.get("/", tags=["root"])

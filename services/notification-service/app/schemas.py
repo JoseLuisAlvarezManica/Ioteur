@@ -27,6 +27,7 @@ class SystemNotification(BaseModel):
 class EmailNotification(BaseModel):
     id: UUID = Field(alias="_id")
     device_id: UUID
+    user_id: str | None = None
     email: str
     reason: str
     severity: str  # info | warning | critical

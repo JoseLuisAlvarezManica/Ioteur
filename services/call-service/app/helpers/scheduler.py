@@ -210,6 +210,7 @@ async def check_inactive_devices() -> None:
                 {
                     "_id": str(uuid.uuid4()),
                     "device_id": device_uuid,
+                    "user_uuid": user_uuid,
                     "email": email,
                     "reason": "inactivity_timeout",
                     "severity": "warning",

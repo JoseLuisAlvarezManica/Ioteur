@@ -14,6 +14,7 @@ from .helpers.mongo import mongo_client_instance, mongo_connect, mongo_disconnec
 from .helpers.rabbit_subscriber import start_subscriber, stop_subscriber
 from .functions.handle_device_disconnected import handle_device_disconnected
 from .functions.handle_system_error import handle_system_error
+from .routes.notifications import notifications_router
 
 handler = logging.StreamHandler()
 handler.setFormatter(JsonFormatter())
@@ -96,6 +97,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+app.include_router(notifications_router)
 
 
 @app.get("/", tags=["root"])

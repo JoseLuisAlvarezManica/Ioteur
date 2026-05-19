@@ -58,9 +58,11 @@ def must_be_logged_in(route):
             payload = jwt.decode(token, public_key, algorithms=[ALGORITHM])
             user_id = payload.get("sub")
             role = payload.get("role")
+            email = payload.get("email")
             request.state.auth_headers = {"Authorization": authorization}
             request.state.user_id = user_id
             request.state.role = role
+            request.state.email = email
         except JWTError:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -138,9 +140,11 @@ def must_be_admin(route):
             payload = jwt.decode(token, public_key, algorithms=[ALGORITHM])
             user_id = payload.get("sub")
             role = payload.get("role")
+            email = payload.get("email")
             request.state.auth_headers = {"Authorization": authorization}
             request.state.user_id = user_id
             request.state.role = role
+            request.state.email = email
         except JWTError:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

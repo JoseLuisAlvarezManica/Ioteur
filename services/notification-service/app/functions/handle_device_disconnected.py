@@ -31,6 +31,7 @@ async def handle_device_disconnected(body: bytes) -> None:
     notification = EmailNotification(
         _id=record_id,
         device_id=data.get("device_id"),
+        user_id=data.get("user_uuid") or data.get("user_id"),
         email=data.get("email", ""),
         reason=data.get("reason", ""),
         severity=data.get("severity", "warning"),
