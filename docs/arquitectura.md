@@ -142,48 +142,158 @@ Todos los mensajes son persistentes (`delivery_mode=2`). Los consumidores usan `
 
 ## Flujos Principales
 
+### Flujo: Registro de Usuario
+
+```mermaid
+sequenceDiagram
+    actor U as Usuario
+    participant FE as Frontend
+    participant GW as API Gateway
+    participant AS as Auth Service
+    participant PG as PostgreSQL
+
+    U->>FE: completa formulario de registro
+    FE->>GW: POST /auth/signup
+    GW->>AS: POST /auth/signup (proxy)
+    AS->>PG: SELECT usuario por email (verifica duplicado)
+    PG-->>AS: sin resultado
+    AS->>PG: INSERT nuevo usuario (id, nombre, email, password_hash, rol)
+    PG-->>AS: 201 Created
+    AS-->>GW: 201 Created
+    GW-->>FE: 201 Created
+    FE-->>U: "Registro exitoso"
+```
+
 ### Flujo: Registro de Dispositivo
 
-```
-Cliente → API Gateway → Call Service
-  Call Service → RabbitMQ (device.register)
-  Device Service consume → PostgreSQL INSERT + Redis HSET
+```mermaid
+sequenceDiagram
+    actor U as Usuario
+    participant FE as Frontend
+    participant GW as API Gateway
+    participant CS as Call Service
+    participant MQ as RabbitMQ
+    participant DS as Device Service
+    participant PG as PostgreSQL
+    participant RD as Redis
+
+    U->>FE: registra nuevo dispositivo
+    FE->>GW: POST /devices/register (Bearer token)
+    GW->>GW: valida JWT RS256 + extrae user_id
+    GW->>CS: POST /devices/register (user_id añadido al payload)
+    CS->>MQ: publish device.register
+    MQ->>DS: consume device.register
+    DS->>PG: INSERT device
+    DS->>RD: HSET device state (device_uuid, status, report_interval, ...)
+    DS-->>MQ: basic_ack
 ```
 
 ### Flujo: Envío de Telemetría
 
-```
-Cliente → API Gateway → Call Service
-  Call Service → Redis (actualiza ultima_vez_log)
-  Call Service → RabbitMQ (register.received)
-  Register Service consume → MongoDB INSERT
+```mermaid
+sequenceDiagram
+    actor D as Dispositivo IoT
+    participant GW as API Gateway
+    participant CS as Call Service
+    participant RD as Redis
+    participant MQ as RabbitMQ
+    participant DS as Device Service
+    participant RS as Register Service
+    participant MDB as MongoDB
+
+    D->>GW: POST /registers/received (Bearer token)
+    GW->>GW: valida JWT RS256
+    GW->>CS: POST /registers/received (proxy)
+    CS->>RD: EXISTS device:{id} (verifica registro)
+    RD-->>CS: device encontrado
+    CS->>RD: HGET status
+    alt dispositivo estaba inactive (reconexión)
+        CS->>RD: HSET status=active
+        CS->>MQ: publish device.update (status=active)
+        MQ->>DS: consume device.update → UPDATE PostgreSQL
+    end
+    CS->>RD: HSET ultima_vez_log = now()
+    CS->>MQ: publish register.received
+    MQ->>RS: consume register.received
+    RS->>MDB: INSERT registro telemetría
+    RS-->>MQ: basic_ack
 ```
 
 ### Flujo: Generación de Reporte
 
-```
-Cliente → API Gateway → Call Service
-  Call Service → Register Service HTTP (obtiene registros)
-  Call Service → RabbitMQ (telemetry.report con records)
-  Telemetry Service consume → calcula métricas → MongoDB INSERT
-  Telemetry Service → RabbitMQ (report.created)
+```mermaid
+sequenceDiagram
+    actor U as Usuario
+    participant FE as Frontend
+    participant GW as API Gateway
+    participant CS as Call Service
+    participant RS as Register Service
+    participant MQ as RabbitMQ
+    participant TS as Telemetry Service
+    participant MDB as MongoDB
+
+    U->>FE: solicita generar reporte del dispositivo
+    FE->>GW: POST /reports/{device_id}/generate (Bearer token)
+    GW->>GW: valida JWT RS256
+    GW->>CS: POST /reports/{device_id}/generate (proxy)
+    CS->>RS: HTTP GET /registers/{device_id}?limit=1000
+    RS-->>CS: lista de registros de telemetría
+    CS->>MQ: publish telemetry.report (device_id + records)
+    MQ->>TS: consume telemetry.report
+    TS->>TS: calcula métricas (máximo, más frecuente, variación %)
+    TS->>MDB: INSERT reporte diario (daily_reports)
+    TS->>MQ: publish report.created
+    TS-->>MQ: basic_ack
 ```
 
 ### Flujo: Notificación de Desconexión
 
-```
-Call Service detecta dispositivo sin heartbeat
-  Call Service → RabbitMQ (device.disconnected)
-  Notification Service consume → MongoDB INSERT (status=unsent)
-  Notification Service → EmailJS API POST
-  Notification Service → MongoDB UPDATE (status=sent)
+```mermaid
+sequenceDiagram
+    participant SCH as Scheduler (Call Service)
+    participant RD as Redis
+    participant AS as Auth Service
+    participant MQ as RabbitMQ
+    participant DS as Device Service
+    participant NS as Notification Service
+    participant MDB as MongoDB
+    participant EJS as EmailJS API
+
+    loop cada ciclo del scheduler
+        SCH->>RD: SCAN device:* (todos los activos)
+        RD-->>SCH: campos del dispositivo (ultima_vez_log, report_interval, ...)
+        SCH->>SCH: elapsed > report_interval × 3?
+    end
+    SCH->>RD: HSET status=inactive
+    SCH->>MQ: publish device.update (status=inactive)
+    MQ->>DS: consume device.update → UPDATE PostgreSQL
+    SCH->>AS: HTTP GET /auth/user/{user_uuid} (obtiene email)
+    AS-->>SCH: email del usuario
+    SCH->>MQ: publish device.disconnected (device_id, user_uuid, email, mensaje)
+    MQ->>NS: consume device.disconnected
+    NS->>MDB: INSERT EmailNotification (status=unsent)
+    NS->>EJS: POST envío de correo
+    EJS-->>NS: 200 OK
+    NS->>MDB: UPDATE EmailNotification (status=sent)
+    NS-->>MQ: basic_ack
 ```
 
 ### Flujo: Error de Sistema
 
-```
-Cualquier servicio → API Gateway (POST /system/error) con INTERNAL_API_KEY
-  API Gateway → Call Service (POST /system/error)
-  Call Service → RabbitMQ (system.error)
-  Notification Service consume → MongoDB INSERT (system_notifications)
+```mermaid
+sequenceDiagram
+    participant SVC as Cualquier Servicio
+    participant GW as API Gateway
+    participant CS as Call Service
+    participant MQ as RabbitMQ
+    participant NS as Notification Service
+    participant MDB as MongoDB
+
+    SVC->>GW: POST /system/error (X-Internal-Key)
+    GW->>GW: verifica INTERNAL_API_KEY
+    GW->>CS: POST /system/error (proxy)
+    CS->>MQ: publish system.error
+    MQ->>NS: consume system.error
+    NS->>MDB: INSERT SystemNotification (auditoría)
+    NS-->>MQ: basic_ack
 ```
