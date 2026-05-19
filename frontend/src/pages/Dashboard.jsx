@@ -9,22 +9,19 @@ import { useAppContext } from "../context/AppContext";
 function DeviceCard({ device, onClick }) {
   const hasData = !!device.device_name;
 
-  const icon = device.icon || "sensor";
-
   return (
     <div
       onClick={() => hasData && onClick(device.device_uuid)}
-      className={`bg-gray-200 rounded-2xl aspect-square relative overflow-hidden ${
-        hasData ? "cursor-pointer hover:bg-gray-300 transition-colors" : ""
+      className={`bg-white border border-gray-200 rounded-2xl p-4 flex items-center gap-4 ${
+        hasData ? "cursor-pointer hover:bg-gray-50 transition-colors" : ""
       }`}
     >
       {hasData && (
         <>
-          {/* ICONO CENTRADO */}
-          <div className="absolute inset-0 flex items-center justify-center ">
-            <div className="p-2 bg-gray-100/50 rounded-xl">
-              <div
-              className="w-14 h-14"
+          {/* ICONO A LA IZQUIERDA */}
+          <div className="flex-shrink-0 p-2 bg-gray-100 rounded-xl">
+            <div
+              className="w-10 h-10"
               style={{
                 backgroundColor: device?.color ?? "#d60404",
                 WebkitMaskImage: `url(/${device?.icon ?? "casa"}.svg)`,
@@ -37,18 +34,17 @@ function DeviceCard({ device, onClick }) {
                 maskPosition: "center",
               }}
             />
-            </div>
           </div>
 
-          {/* INFO ABAJO */}
-          <div className="absolute bottom-3 left-3">
-            <p className="text-sm font-semibold text-gray-900">
+          {/* INFO A LA DERECHA */}
+          <div className="flex flex-col overflow-hidden">
+            <p className="text-sm font-semibold text-gray-900 truncate">
               {device.device_name}
             </p>
 
             <div className="flex items-center gap-1 mt-0.5">
               <span
-                className={`w-2 h-2 rounded-full ${
+                className={`w-2 h-2 rounded-full flex-shrink-0 ${
                   device.status === "active"
                     ? "bg-green-500"
                     : "bg-red-500"
@@ -65,11 +61,11 @@ function DeviceCard({ device, onClick }) {
               </span>
             </div>
 
-            <p className="text-xs text-gray-500 mt-0.5">
-              Última vez visto:{" "}
+            <p className="text-xs text-gray-500 mt-1 truncate">
+              Visto:{" "}
               {device.last_seen
-                ? new Date(device.last_seen).toLocaleString()
-                : "No hay información"}
+                ? new Date(device.last_seen).toLocaleDateString() + " " + new Date(device.last_seen).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                : "No data"}
             </p>
           </div>
         </>
@@ -100,7 +96,7 @@ export function AddDeviceModal({ userId, onClose, onAdded }) {
     "#9f1cd3", // purple
   ];
 
-  const icons = ["radar", "sensor", "vehículo", "casa"];
+  const icons = ["radar", "sensor", "vehículo", "casa", "micro", "rasp"];
 
   const handleSubmit = async () => {
     if (!name.trim() || !mac.trim() || !interval) {
@@ -304,19 +300,25 @@ export function AddDeviceModal({ userId, onClose, onAdded }) {
 function Dashboard() {
   const { user } = useAuth();
   const { devices, groups, loadingDevices: loading, errorDevices: error, fetchDevices } = useAppContext();
-  const [filter, setFilter]       = useState("all");
+  const [filter, setFilter]       = useState("Todos");
+  const [groupFilter, setGroupFilter] = useState("Todos los grupos");
   const [showModal, setShowModal] = useState(false);
   const navigate = useNavigate();
 
+  const availableGroups = ["Todos los grupos", ...new Set(devices.map(d => d.group || "Sin grupo"))];
+
   const filtered = devices.filter((d) => {
-    if (filter === "all") return true;
-    return d.status === filter;
+    const matchesStatus = filter === "Todos" ? true : d.status === filter;
+    const matchesGroup = groupFilter === "Todos los grupos" ? true : (d.group || "Sin grupo") === groupFilter;
+    return matchesStatus && matchesGroup;
   });
 
-  const padded = [
-    ...filtered,
-    ...Array(Math.max(0, 8 - filtered.length)).fill({ device_uuid: null }),
-  ].slice(0, 8);
+  const groupedDevices = filtered.reduce((acc, device) => {
+    const groupName = device.group || "Sin grupo";
+    if (!acc[groupName]) acc[groupName] = [];
+    acc[groupName].push(device);
+    return acc;
+  }, {});
 
   return (
     <AppLayout pageTitle="Dashboard">
@@ -337,10 +339,16 @@ function Dashboard() {
         </div>
       </div>
 
-      <FilterBar filter={filter} setFilter={setFilter} />
+      <FilterBar 
+        filter={filter} 
+        setFilter={setFilter} 
+        groupFilter={groupFilter} 
+        setGroupFilter={setGroupFilter} 
+        availableGroups={availableGroups} 
+      />
 
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-bold text-gray-900">Devices</h2>
+        <h2 className="text-2xl font-bold text-gray-900">Dispositivos</h2>
         <button
           onClick={() => setShowModal(true)}
           className="flex items-center gap-2 text-sm font-medium text-gray-800 hover:text-black"
@@ -350,22 +358,32 @@ function Dashboard() {
             <line x1="12" y1="8" x2="12" y2="16"/>
             <line x1="8" y1="12" x2="16" y2="12"/>
           </svg>
-          Add Device
+          Añadir Dispositivo
         </button>
       </div>
 
-      {loading && <p className="text-sm text-gray-400">Loading devices...</p>}
+      {loading && <p className="text-sm text-gray-400">Cargando dispositivos...</p>}
       {error   && <p className="text-sm text-red-500">{error}</p>}
 
       {!loading && !error && (
-        <div className="grid grid-cols-4 gap-4">
-          {padded.map((device, i) => (
-            <DeviceCard
-              key={device.device_uuid ?? `empty-${i}`}
-              device={device}
-              onClick={(id) => navigate(`/devices/${id}`)}
-            />
+        <div className="flex flex-col gap-8">
+          {Object.entries(groupedDevices).map(([groupName, groupDevices]) => (
+            <div key={groupName} className="bg-white p-5 rounded-2xl border border-gray-200">
+              <h3 className="text-xl font-bold text-gray-900 mb-4 pb-2 border-b border-gray-100 placeholder:">{groupName}</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {groupDevices.map((device) => (
+                  <DeviceCard
+                    key={device.device_uuid}
+                    device={device}
+                    onClick={(id) => navigate(`/devices/${id}`)}
+                  />
+                ))}
+              </div>
+            </div>
           ))}
+          {filtered.length === 0 && (
+            <p className="text-sm text-gray-500">No hay dispositivos para mostrar.</p>
+          )}
         </div>
       )}
 
@@ -417,22 +435,46 @@ export function UserBar() {
   );
 }
 
-export function FilterBar({ filter, setFilter }) {
+export function FilterBar({ filter, setFilter, groupFilter, setGroupFilter, availableGroups = [] }) {
   return (
-    <div className="flex gap-2 mb-6">
-      {["all", "active", "inactive"].map((f) => (
-        <button
-          key={f}
-          onClick={() => setFilter(f)}
-          className={`px-4 py-1.5 rounded-full border text-sm capitalize transition-colors ${
-            filter === f
-              ? "border-gray-900 text-gray-900 font-medium"
-              : "border-gray-400 text-gray-500 hover:border-gray-600"
-          }`}
-        >
-          {f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1)}
-        </button>
-      ))}
+    <div className="flex gap-4 mb-6 items-center flex-wrap">
+      <div className="flex gap-2">
+        {["Todos", "active", "inactive"].map((f) => {
+        let label = "Todos";
+        if (f === "active") label = "Activo";
+        if (f === "inactive") label = "Inactivo";
+
+        return (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={`px-4 py-1.5 rounded-full border text-sm capitalize transition-colors ${
+              filter === f
+                ? "border-gray-900 text-gray-900 font-medium"
+                : "border-gray-400 text-gray-500 hover:border-gray-600"
+            }`}
+          >
+            {label}
+          </button>
+        );
+      })}
+      </div>
+
+      {availableGroups.length > 0 && (
+        <div className="flex items-center gap-2 border-l border-gray-300 pl-4">
+          <label htmlFor="group-select" className="text-sm text-gray-600 font-medium">Grupo:</label>
+          <select
+            id="group-select"
+            value={groupFilter}
+            onChange={(e) => setGroupFilter(e.target.value)}
+            className="border border-gray-300 rounded-xl px-3 py-1.5 text-sm focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-colors bg-white text-gray-700 outline-none cursor-pointer"
+          >
+            {availableGroups.map((g) => (
+              <option key={g} value={g}>{g}</option>
+            ))}
+          </select>
+        </div>
+      )}
     </div>
   );
 }
