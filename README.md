@@ -129,9 +129,37 @@ type public.pem             # Windows
 
 > ⚠️ **Cuidado** donde generas las llaves, evita que se generen en el repositorio especialmente si se va a publicar.
 
-# 4. Editar .env con los valores reales
+# 4. Configurar EmailJS
+# Ioteur envía notificaciones por correo cuando un dispositivo se desconecta.
+# Para ello necesitas una cuenta en EmailJS y los siguientes datos:
+#   EMAILJS_SERVICE_ID    → ID del servicio de correo que crees en EmailJS
+#   EMAILJS_TEMPLATE_ID   → ID de la plantilla de correo que configures
+#   EMAILJS_PUBLIC_KEY    → Clave pública de tu cuenta
+#   EMAILJS_PRIVATE_KEY   → Clave privada de tu cuenta
+#
+# Guía oficial para obtener estos valores:
+# https://www.emailjs.com/docs/tutorial/overview/
+#
+# Una vez creada la cuenta y el servicio, puedes encontrar las claves en:
+# https://dashboard.emailjs.com/admin/account
+
+# 5. Editar .env con los valores reales
 # Ver sección "Variables de entorno" más abajo
 ```
+
+### Despliegue en Railway
+
+[Railway](https://railway.app/) permite desplegar la plataforma en la nube sin configurar servidores. Cada servicio del stack se despliega como un servicio independiente dentro de un proyecto Railway.
+
+**Pasos generales:**
+
+1. Crea una cuenta en [railway.app](https://railway.app/) y un nuevo proyecto.
+2. Para cada microservicio (api-gateway, auth-service, call-service, etc.) crea un nuevo servicio apuntando al repositorio y especifica la ruta del `Dockerfile` correspondiente (p. ej. `services/api-gateway/Dockerfile`).
+3. Agrega los servicios de infraestructura desde el marketplace de Railway: **PostgreSQL**, **MongoDB**, **Redis** y **RabbitMQ** (o CloudAMQP como alternativa gestionada).
+4. En cada servicio, configura las **variables de entorno** con los valores equivalentes a los del archivo `.env` local. Railway inyecta automáticamente las URLs de conexión de los servicios del marketplace.
+5. Asegúrate de que los servicios internos se comunican entre sí usando las URLs de Railway (variables `*_SERVICE_URL`) y que solo el API Gateway tiene un dominio público expuesto.
+
+Consulta la documentación oficial de Railway para más detalles: [https://docs.railway.app/](https://docs.railway.app/)
 
 ---
 
@@ -292,19 +320,28 @@ Ver documentación completa en [docs/eventos.md](docs/eventos.md).
 
 ## Evidencias de Pruebas
 
-Las evidencias se encuentran en la carpeta [`evidence/`](evidence/).
+Las evidencias se encuentran en la carpeta [`evidence/`](evidence/) y están organizadas en tres subcarpetas:
+
+- **[`evidence/logs/`](evidence/logs/)** — Salida capturada de Docker Compose durante las pruebas de fallas simuladas (p. ej. reinicio del Redis de autenticación), útil para verificar el comportamiento de los decoradores y la recuperación automática de los servicios.
+- **[`evidence/postman/`](evidence/postman/)** — Colección Postman con 22 requests agrupados en 6 carpetas que cubren los flujos principales: autenticación, dispositivos, telemetría, reportes, notificaciones y errores de sistema. Incluye una nota [`NOTA.md`](evidence/postman/NOTA.md) con instrucciones de uso.
+- **[`evidence/screenshots/`](evidence/screenshots/)** — Capturas de pantalla de los escenarios probados: dispositivo activo/inactivo, reinicio de Redis y comportamiento del servicio de dispositivos ante fallos.
 
 **Correo de notificación enviado por EmailJS:**
 
 ![EmailJS Evidence](docs/images/Evidence_EmailJS.png)
 
-Ver detalles en [docs/pruebas.md](docs/pruebas.md).
+En [docs/pruebas.md](docs/pruebas.md) se detalla la estrategia completa de pruebas: los cuatro niveles (lint con Ruff, integración con cURL/pytest, E2E y notificación EmailJS), los workflows de GitHub Actions que los ejecutan, y cómo reproducirlos localmente.
 
 ---
 
 ## Fallas Simuladas
 
-Ver [docs/fallas-simuladas.md](docs/fallas-simuladas.md).
+Se documentaron escenarios de falla controlada para verificar la resiliencia del sistema ante caídas de infraestructura:
+
+- **Reinicio del Redis de autenticación** — Se simuló un reinicio prolongado (2 min) del contenedor `redis-auth`. Se verificó que el API Gateway y el Auth Service devuelven errores controlados durante la caída y recuperan la operación normal de forma automática al volver a estar disponible. También se comprobó que los datos persisten en Redis tras un reinicio directo.
+- **Caída del Device Service** — Se detuvo el contenedor del servicio de dispositivos para observar cómo el sistema gestiona las peticiones entrantes cuando ese componente no está disponible.
+
+Ver el detalle completo del proceso, comandos utilizados, respuestas obtenidas y capturas en [docs/fallas-simuladas.md](docs/fallas-simuladas.md).
 
 ---
 
@@ -318,4 +355,4 @@ Ver [docs/fallas-simuladas.md](docs/fallas-simuladas.md).
 
 4. **El diseño inicial rara vez sobrevive al contacto con la implementación:** La arquitectura que planteamos en papel tuvo que modificarse varias veces. El call-service, por ejemplo, comenzó como un simple proxy y terminó siendo el orquestador principal del dominio. Aceptar que el diseño es un punto de partida, no un contrato inamovible, redujo la fricción del equipo al momento de pivotar.
 
-5. **La observabilidad es una necesidad, no un lujo:** Depurar problemas en un sistema con siete servicios comunicándose de forma asíncrona es considerablemente más difícil que depurar un monolito. Tener logs estructurados con niveles configurables desde el inicio ahorró horas de trabajo. Si volviéramos a empezar, también agregaríamos trazas distribuidas desde el día uno.
+5. **La observabilidad es una necesidad:** Depurar problemas en un sistema con siete servicios comunicándose de forma asíncrona es considerablemente más difícil que depurar un monolito. Tener logs estructurados con niveles configurables desde el inicio ahorró horas de trabajo. Si volviéramos a empezar, también agregaríamos trazas distribuidas desde el día uno.
