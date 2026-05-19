@@ -2,6 +2,8 @@
 
 Todos los endpoints externos son accedidos a través del **API Gateway** (`http://localhost:8000` en desarrollo).
 
+Cualquier mención del uuid del usuario se refiere a la versión encriptada que se encuentra en el JWT, la cual desencripta en api-gateway"
+
 ## Autenticación
 
 Los endpoints protegidos requieren un `Authorization: Bearer <access_token>` en el header.  

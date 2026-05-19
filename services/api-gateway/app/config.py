@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     INTERNAL_API_KEY: str
 
     PUBLIC_KEY: str
+    UUID_ENCRYPTION_KEY: str
 
     @field_validator("PUBLIC_KEY", mode="before")
     @classmethod

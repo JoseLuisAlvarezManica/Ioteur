@@ -80,6 +80,7 @@ jobs:
 
           printf 'PRIVATE_KEY=%s\n' "${{ secrets.PRIVATE_KEY }}" >> .env
           printf 'PUBLIC_KEY=%s\n' "${{ secrets.PUBLIC_KEY }}" >> .env
+          printf 'UUID_ENCRYPTION_KEY=%s\n' "${{ secrets.UUID_ENCRYPTION_KEY }}" >> .env
 
 
       - name: Start services

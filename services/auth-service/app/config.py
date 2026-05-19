@@ -17,6 +17,7 @@ class Settings(BaseSettings):
 
     PRIVATE_KEY: str
     PUBLIC_KEY: str
+    UUID_ENCRYPTION_KEY: str
 
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7

@@ -1,6 +1,7 @@
 import logging
 from functools import wraps
 
+from cryptography.fernet import Fernet, InvalidToken
 from fastapi import HTTPException, Request, status
 from fastapi.security import HTTPBearer
 from jose import jwt, JWTError
@@ -56,14 +57,17 @@ def must_be_logged_in(route):
         try:
             public_key = _wrap_pem(settings.PUBLIC_KEY, "PUBLIC KEY")
             payload = jwt.decode(token, public_key, algorithms=[ALGORITHM])
-            user_id = payload.get("sub")
+            encrypted_uid = payload.get("sub")
+            user_id = (
+                Fernet(settings.UUID_ENCRYPTION_KEY.encode())
+                .decrypt(encrypted_uid.encode())
+                .decode()
+            )
             role = payload.get("role")
-            email = payload.get("email")
             request.state.auth_headers = {"Authorization": authorization}
             request.state.user_id = user_id
             request.state.role = role
-            request.state.email = email
-        except JWTError:
+        except (JWTError, InvalidToken, Exception):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="El token no es válido",
@@ -138,14 +142,17 @@ def must_be_admin(route):
         try:
             public_key = _wrap_pem(settings.PUBLIC_KEY, "PUBLIC KEY")
             payload = jwt.decode(token, public_key, algorithms=[ALGORITHM])
-            user_id = payload.get("sub")
+            encrypted_uid = payload.get("sub")
+            user_id = (
+                Fernet(settings.UUID_ENCRYPTION_KEY.encode())
+                .decrypt(encrypted_uid.encode())
+                .decode()
+            )
             role = payload.get("role")
-            email = payload.get("email")
             request.state.auth_headers = {"Authorization": authorization}
             request.state.user_id = user_id
             request.state.role = role
-            request.state.email = email
-        except JWTError:
+        except (JWTError, InvalidToken, Exception):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="El token no es válido",

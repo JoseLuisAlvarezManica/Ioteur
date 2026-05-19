@@ -129,7 +129,16 @@ type public.pem             # Windows
 
 > ⚠️ **Cuidado** donde generas las llaves, evita que se generen en el repositorio especialmente si se va a publicar.
 
-# 4. Configurar EmailJS
+# 4. Generar llave de Fernet
+pip install cryptography
+
+from cryptography.fernet import Fernet
+print(Fernet.generate_key().decode())
+
+# Copiar el contenido dentro de:
+# UUID_ENCRYPTION_KEY=...
+
+# 5. Configurar EmailJS
 # Ioteur envía notificaciones por correo cuando un dispositivo se desconecta.
 # Para ello necesitas una cuenta en EmailJS y los siguientes datos:
 #   EMAILJS_SERVICE_ID    → ID del servicio de correo que crees en EmailJS
@@ -143,7 +152,7 @@ type public.pem             # Windows
 # Una vez creada la cuenta y el servicio, puedes encontrar las claves en:
 # https://dashboard.emailjs.com/admin/account
 
-# 5. Editar .env con los valores reales
+# 6. Editar .env con los valores reales
 # Ver sección "Variables de entorno" más abajo
 ```
 
@@ -227,6 +236,7 @@ El archivo `.env.example` contiene todas las variables con valores de ejemplo. C
 | `API_GATEWAY_URL`              | URL interna del API Gateway                        |
 | `PRIVATE_KEY`                  | Clave privada RSA utilizada para firmar JWT        |
 | `PUBLIC_KEY`                   | Clave pública RSA utilizada para validar JWT       |
+| `UUID_ENCRYPTION_KEY`          | Clave unica para encriptar o desencriptar información sensible       |
 | `ACCESS_TOKEN_EXPIRE_MINUTES`  | Tiempo de expiración del access token en minutos   |
 | `REFRESH_TOKEN_EXPIRE_DAYS`    | Tiempo de expiración del refresh token en días     |
 | `INTERNAL_API_KEY`             | Clave compartida entre servicios internos          |
