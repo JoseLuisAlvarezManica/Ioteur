@@ -59,13 +59,22 @@ async def handle_device_disconnected(body: bytes) -> None:
         )
         return
 
+    _SEVERITY_ES = {
+        "info": "Información",
+        "warning": "Advertencia",
+        "error": "Error",
+        "critical": "Crítico",
+    }
+    _REASON_ES = {
+        "inactivity_timeout": "Tiempo de inactividad superado",
+    }
+
     # Attempt to send via EmailJS
     template_params = {
         "email": notification.email,
         "device_id": str(notification.device_id),
-        "severity": notification.severity,
-        "reason": notification.reason,
-        "status": notification.status,
+        "severity": _SEVERITY_ES.get(notification.severity, notification.severity),
+        "reason": _REASON_ES.get(notification.reason, notification.reason),
         "message": notification.message,
         "created_at": notification.serialize_dt(notification.created_at),
     }

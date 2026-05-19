@@ -83,3 +83,4 @@ async def test_device_disconnected_via_rabbit_persisted():
     assert doc["email"] == "fake-email@example.test"
     assert doc["reason"] == "missed_intervals"
     assert doc["status"] in ("sent", "unsent")
+

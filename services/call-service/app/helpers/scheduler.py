@@ -215,9 +215,9 @@ async def check_inactive_devices() -> None:
                     "reason": "inactivity_timeout",
                     "severity": "warning",
                     "message": (
-                        f"Device '{device_name}' has not sent telemetry for "
-                        f"{elapsed:.0f}s (threshold: {threshold}s). "
-                        "It has been marked as inactive."
+                        f"El dispositivo '{device_name}' no ha enviado telemetría en "
+                        f"{elapsed:.0f}s (umbral: {threshold}s). "
+                        "Ha sido marcado como inactivo."
                     ),
                 },
             )
