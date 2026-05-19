@@ -465,6 +465,61 @@ Relay interno para propagar errores al bus de mensajes.
 
 ---
 
+## Notificaciones (`/notifications`)
+ 
+### `GET /notifications/device/{device_id}`
+ 
+Obtiene las notificaciones asociadas a un dispositivo específico.
+ 
+**Auth:** Bearer — usuario autenticado  
+**Path Params:**
+- `device_id` — UUID del dispositivo.
+**Query Params:**
+- `limit` (int, default=100, max=1000)
+- `skip` (int, default=0)
+**Response `200 OK`:**
+```json
+[
+  {
+    "device_id": "uuid",
+    "message": "Temperatura fuera de rango",
+    "created_at": "2026-05-17T10:00:00+00:00"
+  }
+]
+```
+ 
+---
+ 
+### `GET /notifications/me`
+ 
+Obtiene todas las notificaciones del usuario autenticado, agregando las de todos sus dispositivos.
+ 
+**Auth:** Bearer — usuario autenticado  
+**Query Params:**
+- `limit` (int, default=100, max=1000)
+- `skip` (int, default=0)
+**Response `200 OK`:** igual que `GET /notifications/device/{device_id}`.
+ 
+---
+ 
+### `GET /notifications/user/{user_id}`
+ 
+Obtiene las notificaciones de cualquier usuario por su ID. Exclusivo para administradores.
+ 
+**Auth:** Bearer — requiere rol `admin`  
+**Path Params:**
+- `user_id` — UUID del usuario.
+**Query Params:**
+- `limit` (int, default=100, max=1000)
+- `skip` (int, default=0)
+**Response `200 OK`:** igual que `GET /notifications/device/{device_id}`.
+ 
+**Errores:**
+- `401 Unauthorized` — Token ausente o inválido.
+- `403 Forbidden` — El usuario no tiene rol `admin`.
+---
+
+
 ## Health Checks
 
 Cada servicio expone un endpoint `GET /health` que verifica la conectividad con sus dependencias.

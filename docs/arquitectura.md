@@ -50,7 +50,7 @@ Ioteur sigue una arquitectura de **microservicios** desacoplados que se comunica
 - Recibe peticiones del API Gateway y las convierte en eventos o en consultas HTTP a servicios internos.
 - **Publica** eventos en RabbitMQ (`device.register`, `device.update`, `register.received`, `device.disconnected`, `telemetry.report`, `system.error`).
 - **Consulta** sincrónicamente a `device-service`, `register-service` y `telemetry-service` para operaciones de lectura.
-- Mantiene el estado de los dispositivos (último heartbeat) en Redis.
+- Mantiene el estado de los dispositivos en Redis y ejecuta un **trabajo periódico** que escanea todos los dispositivos en Redis, detecta cuáles superan su `report_interval`, publica `device.disconnected` y notifica al usuario.
 
 **Dependencias de arranque:** `redis_device` (healthy), `rabbitmq` (healthy).
 

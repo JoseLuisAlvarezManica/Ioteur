@@ -111,6 +111,7 @@ Registra cada intento de notificación por correo electrónico.
 ```json
 {
   "_id": "UUID",
+  "user_id": "UUID",
   "device_id": "UUID",
   "email": "usuario@example.com",
   "reason": "missed_intervals",
@@ -120,10 +121,10 @@ Registra cada intento de notificación por correo electrónico.
   "created_at": "2026-05-17T10:00:00+00:00"
 }
 ```
-
 | Campo | Tipo | Descripción |
 |---|---|---|
 | `_id` | UUID (string) | Identificador único |
+| `user_id` | UUID (string) o null | Identificador único del usuario |
 | `device_id` | UUID (string) | Dispositivo que generó la alerta |
 | `email` | string | Destinatario del correo |
 | `reason` | string | Razón de la desconexión |

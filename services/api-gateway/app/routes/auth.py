@@ -166,7 +166,9 @@ async def me(request: Request, auth_client: auth_dependency):
     dependencies=[Depends(bearer_scheme)],
 )
 @must_be_logged_in
-async def update_me(request: Request, body: UserSelfUpdate, auth_client: auth_dependency):
+async def update_me(
+    request: Request, body: UserSelfUpdate, auth_client: auth_dependency
+):
     code, data = await auth_client.patch(
         "/auth/me",
         body.model_dump(exclude_none=True),

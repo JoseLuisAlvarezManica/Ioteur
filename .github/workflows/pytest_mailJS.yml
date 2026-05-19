@@ -74,6 +74,8 @@ jobs:
             echo "EMAILJS_TEMPLATE_ID=${{ secrets.EMAILJS_TEMPLATE_ID }}"
             echo "EMAILJS_PUBLIC_KEY=${{ secrets.EMAILJS_PUBLIC_KEY }}"
             echo "EMAILJS_PRIVATE_KEY=${{ secrets.EMAILJS_PRIVATE_KEY }}"
+
+            echo "SCHEDULER_INTERVAL_SECONDS=${{ secrets.SCHEDULER_INTERVAL_SECONDS }}"
           } > .env
 
           printf 'PRIVATE_KEY=%s\n' "${{ secrets.PRIVATE_KEY }}" >> .env

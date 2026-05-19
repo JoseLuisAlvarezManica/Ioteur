@@ -125,15 +125,33 @@ Publica mensajes `system.error` al exchange `ioteur` y verifica que el notificat
 
 ### 4. Pruebas E2E — `pytest_e2e.yml`
 
-Se ejecuta en pushes a `main` y manualmente (`workflow_dispatch`). Levanta el stack con `--wait` (espera todos los healthchecks) y ejecuta `test_e2e.py` que cubre el flujo completo end-to-end a través del API Gateway en `localhost:8000`:
-
+Se ejecuta en pushes a `main` y manualmente (`workflow_dispatch`). Levanta el stack con `--wait` (espera todos los healthchecks) y ejecuta `test_e2e.py` que cubre el flujo completo end-to-end a través del API Gateway en `localhost:8000` (22 tests):
+ 
 | Paso | Test | Request |
 |---|---|---|
 | 1 | `test_01_signup` | `POST /auth/signup` → 201 |
-| 2 | `test_02_login` | `POST /auth/login` → 200, extrae `access_token` |
+| 2 | `test_02_login` | `POST /auth/login` → 200, extrae `access_token` y `refresh_token` |
 | 3 | `test_03_decode_jwt` | Decodifica el JWT y extrae `user_id` del campo `sub` |
-| 4 | `test_04_register_device` | `POST /devices/register` → 202, polling hasta que el dispositivo aparece |
-| 5+ | Registros + reports | `POST /registers/received` ×5, polling `GET /registers/{device_id}`, `GET /reports/{device_id}` |
+| 4 | `test_04_get_me` | `GET /auth/me` → 200, verifica email y perfil |
+| 5 | `test_05_patch_me_name` | `PATCH /auth/me` → 200, actualiza nombre |
+| 6 | `test_06_patch_me_password` | `PATCH /auth/me` → 200, cambia contraseña con `old_password` + `new_password` |
+| 7 | `test_07_login_new_password` | `POST /auth/login` → 200, verifica que la nueva contraseña funciona |
+| 8 | `test_08_refresh_token` | `POST /auth/refresh` → 200, renueva `access_token` vía `X-Refresh-Token` |
+| 9 | `test_09_logout` | `POST /auth/logout` → 200, revoca tokens |
+| 10 | `test_10_me_after_logout` | `GET /auth/me` → 401, verifica que el token queda revocado |
+| 11 | `test_11_relogin` | `POST /auth/login` → 200, re-login para continuar el flujo |
+| 12 | `test_12_register_device` | `POST /devices/register` → 202 |
+| 13 | `test_13_poll_device_appears` | `GET /devices/me` → polling hasta que el dispositivo aparece (timeout 20 s) |
+| 14 | `test_14_update_device` | `PUT /devices/update` → 202, actualiza nombre e intervalo del dispositivo |
+| 15 | `test_15_send_registers` | `POST /registers/received` × 5 → 202 cada uno |
+| 16 | `test_16_poll_registers_stored` | `GET /registers/{device_id}` → polling hasta ≥ 5 registros almacenados |
+| 17 | `test_17_get_registers_by_date` | `GET /registers/{device_id}/by-date` → 200, filtra por rango de fechas |
+| 18 | `test_18_generate_report` | `POST /reports/{device_id}/generate` → 202 |
+| 19 | `test_19_poll_reports_stored` | `GET /reports/{device_id}` → polling hasta ≥ 1 reporte almacenado |
+| 20 | `test_20_get_reports_by_date` | `GET /reports/{device_id}/by-date` → 200, filtra por rango de fechas |
+| 21 | `test_21_get_notifications_by_device` | `GET /notifications/device/{device_id}` → 200 |
+| 22 | `test_22_get_my_notifications` | `GET /notifications/me` → 200 |
+
 
 ---
 
