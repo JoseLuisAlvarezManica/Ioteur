@@ -38,7 +38,7 @@ async def register_device(request: Request, body: RegisterDevice, client: call_d
     if not MAC_ADDRESS_REGEX.match(body.mac_address):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid MAC address format. Expected format: XX:XX:XX:XX:XX:XX",
+            detail="MAC inválida. Usa solo caracteres hexadecimales (0-9, A-F) en formato AA:AA:AA:AA:AA:AA",
         )
     payload = {**body.model_dump(), "user_id": request.state.user_id}
     code, data = await client.post("/devices/register", payload)

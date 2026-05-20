@@ -96,16 +96,16 @@ function Notifications() {
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
-    <AppLayout pageTitle="Notifications">
+    <AppLayout pageTitle="Notificaciones">
       <UserBar />
 
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Notifications</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Notificaciones</h2>
           {unreadCount > 0 && (
             <p className="text-sm text-gray-500 mt-0.5">
-              {unreadCount} unread notification{unreadCount > 1 ? "s" : ""}
+              {unreadCount} notificación{unreadCount > 1 ? "es" : ""}
             </p>
           )}
         </div>
@@ -136,7 +136,7 @@ function Notifications() {
         ))}
       </div>
 
-      {loading && <p className="text-sm text-gray-400">Loading notifications...</p>}
+      {loading && <p className="text-sm text-gray-400">Cargando notificaciones...</p>}
       {error   && <p className="text-sm text-red-500">{error}</p>}
 
       {!loading && !error && filtered.length === 0 && (
@@ -145,7 +145,7 @@ function Notifications() {
             <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
             <path d="M13.73 21a2 2 0 01-3.46 0"/>
           </svg>
-          <p className="text-sm">No notifications</p>
+          <p className="text-sm">No hay notificaciones</p>
         </div>
       )}
 

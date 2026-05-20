@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import AppLayout from "../layouts/AppLayout";
 import { devicesApi } from "../api/devices";
-import { waitForDeviceAbsent, waitForDevicePresent } from "../utils/poll";
+import { waitForDeviceAbsent, waitForDevicePresent, waitForDeviceStatus } from "../utils/poll";
 import { recordsApi, telemetryApi } from "../api/telemetry";
 import { UserBar, FilterBar } from "./Dashboard";
 import { useAppContext } from "../context/AppContext";
@@ -49,8 +49,9 @@ function DeviceDetail() {
   const handleRequestReport = async () => {
     setReportMsg(null);
     try {
+      console.log("Solicitando reporte para device_id:", id);
       await telemetryApi.requestReport(id);
-      setReportMsg("✓ Report requested. You'll receive an email when it's ready.");
+      setReportMsg("✓ Reporte solicitado exitosamente. Te llegara un correo de confirmación.");
     } catch (err) {
       setReportMsg(`Error: ${err.message}`);
     }
@@ -77,6 +78,8 @@ function DeviceDetail() {
     const newStatus = device.status === "active" ? "inactive" : "active";
     try {
       await devicesApi.updateStatus(id, newStatus);
+      // Wait until the status is reflected upstream
+      await waitForDeviceStatus(id, newStatus, { interval: 100, maxAttempts: 8 });
       await globalRefresh();
     } catch (err) {
       alert(err.message);
@@ -132,7 +135,7 @@ function DeviceDetail() {
             <ul className="flex flex-col justify-center gap-3 text-sm text-gray-800">
               <li><span className="font-bold">Nombre:</span> {device.device_name}</li>
               <li><span className="font-bold">Dirección MAC:</span> {device.mac_address}</li>
-              <li><span className="font-bold">UUID:</span> {device.device_uuid}</li>
+              <li><span className="font-bold">Device ID:</span> {device.device_uuid}</li>
               <li>
                 <span className="font-bold">Última vez visto:</span>{" "}
                 {device.last_seen
@@ -190,7 +193,8 @@ function DeviceDetail() {
             </pre>
           </div>
         ) : (
-          <table className="w-full border-collapse text-sm">
+          <div className="rounded-2xl overflow-hidden border border-gray-200">
+            <table className="w-full border-collapse text-sm">
             <thead>
               <tr>
                 <th className="border border-gray-300 px-4 py-2 text-center font-semibold text-gray-800">
@@ -216,6 +220,7 @@ function DeviceDetail() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 
