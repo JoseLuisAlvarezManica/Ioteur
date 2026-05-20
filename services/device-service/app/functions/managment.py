@@ -14,6 +14,7 @@ from ..schemas import (
 
 MAC_ADDRESS_REGEX = r"^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$"
 
+
 def _device_redis_key(device_uuid: str) -> str:
     return f"device:{device_uuid}"
 
@@ -30,10 +31,14 @@ async def register_device(device_data: Register_Device) -> Device_Register_Respo
             raise ValueError("Device already exists with the same mac address and name")
 
         device_uuid = str(uuid.uuid4())
-        
-        #Validate mac address format
-        if not isinstance(device_data.mac_address, str) or not match(MAC_ADDRESS_REGEX, device_data.mac_address):
-            raise ValueError("Invalid MAC address format. Expected format: XX:XX:XX:XX:XX:XX")
+
+        # Validate mac address format
+        if not isinstance(device_data.mac_address, str) or not match(
+            MAC_ADDRESS_REGEX, device_data.mac_address
+        ):
+            raise ValueError(
+                "Invalid MAC address format. Expected format: XX:XX:XX:XX:XX:XX"
+            )
 
         new_device = Device(
             device_uuid=device_uuid,
@@ -94,13 +99,13 @@ async def update_device(device_data: Update_Device) -> Update_Device:
             mapping={"status": device.status},
         )
 
-        return  Update_Device(
-            device_uuid=device.device_uuid, 
+        return Update_Device(
+            device_uuid=device.device_uuid,
             status=device.status,
             report_interval=device.report_interval,
             icon=device_data.icon,
             color=device_data.color,
-            group=device_data.group
+            group=device_data.group,
         )
 
 

@@ -17,6 +17,7 @@ call_dep = Annotated[CallClient, Depends(get_call_client)]
 
 MAC_ADDRESS_REGEX = re.compile(r"^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$")
 
+
 async def verify_internal_key(
     x_internal_key: Annotated[str | None, Header()] = None,
 ) -> None:
