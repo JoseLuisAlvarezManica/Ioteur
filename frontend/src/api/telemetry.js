@@ -1,7 +1,8 @@
 import { api } from "./client";
 
 export const recordsApi = {
-  list: (deviceId) => api.get(`/registers/${deviceId}`),
+  list: (deviceId, limit = 5, skip = 0) =>
+    api.get(`/registers/${deviceId}?limit=${limit}&skip=${skip}`),
   listByDate: (deviceId, from, to) => api.get(`/registers/${deviceId}/by-date?from=${from}&to=${to}`),
 };
 

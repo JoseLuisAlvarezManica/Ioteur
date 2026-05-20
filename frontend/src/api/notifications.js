@@ -1,14 +1,8 @@
-import { mockNotifications } from "../data/mockData";
+import { api } from "./client";
 
 export const notificationsApi = {
-  list: ()      => Promise.resolve([...mockNotifications]),
-  markRead: (id) => {
-    const n = mockNotifications.find((n) => n.id === id);
-    if (n) n.read = true;
-    return Promise.resolve(n);
-  },
-  markAllRead: () => {
-    mockNotifications.forEach((n) => (n.read = true));
-    return Promise.resolve({ ok: true });
-  },
+  // Returns a list of EmailNotification objects for the logged-in user.
+  // Fields: id, device_id, user_id, email, reason, severity, message, status, created_at
+  list: (limit = 100, skip = 0) =>
+    api.get(`/notifications/me?limit=${limit}&skip=${skip}`),
 };

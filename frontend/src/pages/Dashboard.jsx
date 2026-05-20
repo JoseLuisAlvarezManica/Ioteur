@@ -337,21 +337,6 @@ function Dashboard() {
     <AppLayout pageTitle="Dashboard de Dispositivos">
       <UserBar />
 
-      {/* Notas moradas */}
-      <div className="bg-purple-100 border border-purple-200 rounded-2xl p-5 mb-6 shadow-sm relative overflow-hidden flex items-center gap-4">
-        <div className="p-3 bg-purple-200 rounded-full text-purple-700">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-            <line x1="12" y1="9" x2="12" y2="13"/>
-            <line x1="12" y1="17" x2="12.01" y2="17"/>
-          </svg>
-        </div>
-        <div>
-          <h3 className="text-purple-900 font-bold text-sm">Resumen del sistema</h3>
-          <p className="text-purple-700 text-xs mt-0.5">La conexión con el Gateway está estable. Revisa el estado general de tus dispositivos a continuación.</p>
-        </div>
-      </div>
-
       <FilterBar 
         filter={filter} 
         setFilter={setFilter} 
@@ -418,6 +403,24 @@ function Dashboard() {
 export function UserBar() {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const [gwStatus, setGwStatus] = useState("checking");
+
+  useEffect(() => {
+    const check = async () => {
+      try {
+        const controller = new AbortController();
+        const tid = setTimeout(() => controller.abort(), 4000);
+        const res = await fetch("/api/health", { signal: controller.signal });
+        clearTimeout(tid);
+        setGwStatus(res.ok ? "online" : "offline");
+      } catch {
+        setGwStatus("offline");
+      }
+    };
+    check();
+    const id = setInterval(check, 30000);
+    return () => clearInterval(id);
+  }, []);
 
   const handleLogout = async () => {
     const { authApi } = await import("../api/auth");
@@ -427,8 +430,22 @@ export function UserBar() {
     navigate("/");
   };
 
+  const dotColor =
+    gwStatus === "online"  ? "bg-green-500" :
+    gwStatus === "offline" ? "bg-red-500"   : "bg-yellow-400";
+  const label =
+    gwStatus === "online"  ? "Online"  :
+    gwStatus === "offline" ? "Offline" : "...";
+
   return (
-    <div className="flex justify-end items-center gap-2 mb-4">
+    <div className="flex justify-end items-center gap-3 mb-4">
+      {/* Gateway status pill */}
+      <div className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-gray-200 bg-white shadow-sm">
+        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dotColor}`} />
+        <span className="text-xs font-medium text-gray-600">{label}</span>
+      </div>
+
+      {/* User info */}
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-gray-600">
         <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
       </svg>

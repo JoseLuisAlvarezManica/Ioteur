@@ -9,13 +9,11 @@ const severityStyles = {
   critical: { dot: "bg-red-500",    badge: "bg-red-50 text-red-700 border-red-200" },
 };
 
-function NotificationItem({ notif, onMarkRead }) {
+function NotificationItem({ notif }) {
   const styles = severityStyles[notif.severity] || severityStyles.info;
 
   return (
-    <div className={`flex items-start gap-4 p-4 rounded-2xl border transition-colors ${
-      notif.read ? "bg-white border-gray-100" : "bg-gray-50 border-gray-200"
-    }`}>
+    <div className="flex items-start gap-4 p-4 rounded-2xl border bg-white border-gray-100 transition-colors">
 
       {/* Severity dot */}
       <div className="mt-1 flex-shrink-0">
@@ -28,11 +26,6 @@ function NotificationItem({ notif, onMarkRead }) {
           <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border capitalize ${styles.badge}`}>
             {notif.severity}
           </span>
-          {!notif.read && (
-            <span className="text-xs font-semibold text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full">
-              New
-            </span>
-          )}
         </div>
         <p className="text-sm text-gray-800 font-medium">{notif.reason}</p>
         <p className="text-sm text-gray-500 mt-0.5 break-words">{notif.message}</p>
@@ -40,16 +33,6 @@ function NotificationItem({ notif, onMarkRead }) {
           {new Date(notif.created_at).toLocaleString()}
         </p>
       </div>
-
-      {/* Mark read button */}
-      {!notif.read && (
-        <button
-          onClick={() => onMarkRead(notif.id)}
-          className="flex-shrink-0 text-xs text-gray-400 hover:text-gray-700 underline mt-1"
-        >
-          Mark read
-        </button>
-      )}
     </div>
   );
 }
@@ -67,33 +50,10 @@ function Notifications() {
       .finally(() => setLoading(false));
   }, []);
 
-  const handleMarkRead = async (id) => {
-    try {
-      await notificationsApi.markRead(id);
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-      );
-    } catch (err) {
-      alert(err.message);
-    }
-  };
-
-  const handleMarkAllRead = async () => {
-    try {
-      await notificationsApi.markAllRead();
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-    } catch (err) {
-      alert(err.message);
-    }
-  };
-
   const filtered = notifications.filter((n) => {
-    if (filter === "unread") return !n.read;
-    if (filter === "all")    return true;
+    if (filter === "all") return true;
     return n.severity === filter;
   });
-
-  const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
     <AppLayout pageTitle="Notificaciones">
@@ -103,25 +63,17 @@ function Notifications() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Notificaciones</h2>
-          {unreadCount > 0 && (
+          {notifications.length > 0 && (
             <p className="text-sm text-gray-500 mt-0.5">
-              {unreadCount} notificación{unreadCount > 1 ? "es" : ""}
+              {notifications.length} notificación{notifications.length > 1 ? "es" : ""}
             </p>
           )}
         </div>
-        {unreadCount > 0 && (
-          <button
-            onClick={handleMarkAllRead}
-            className="text-sm text-gray-500 underline hover:text-gray-800"
-          >
-            Mark all as read
-          </button>
-        )}
       </div>
 
       {/* Filters */}
       <div className="flex gap-2 mb-6 flex-wrap">
-        {["all", "unread", "info", "warning", "critical"].map((f) => (
+        {["all", "info", "warning", "critical"].map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
@@ -152,7 +104,7 @@ function Notifications() {
       {!loading && !error && filtered.length > 0 && (
         <div className="flex flex-col gap-3">
           {filtered.map((n) => (
-            <NotificationItem key={n.id} notif={n} onMarkRead={handleMarkRead} />
+            <NotificationItem key={n.id} notif={n} />
           ))}
         </div>
       )}

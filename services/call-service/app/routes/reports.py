@@ -38,6 +38,12 @@ async def generate_report(device_id: str):
             )
             raise HTTPException(status_code=code, detail=data)
 
+        if not data:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="No hay registros para este dispositivo. No se puede generar el reporte.",
+            )
+
         await publish(
             EXCHANGE,
             "telemetry.report",

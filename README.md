@@ -209,6 +209,22 @@ docker compose -f docker-compose.yml -f docker-compose.stagging.yml up -d --buil
 
 El API Gateway queda expuesto en el puerto **8081**.
 
+### Levantar Front
+Primero se debe de instalar la versión LTS de Node.js
+
+Acceder a la carpeta de frontend en terminal y realizar el siguiente comando para instalar las dependencias del proyecto
+
+```bash
+npm install
+```
+
+En las siguientes ocasiones se podra levantar el front con:
+```bash
+npm run dev
+```
+
+El front queda expuesto en el puerto **5173**.
+
 ---
 
 ## Variables de Entorno

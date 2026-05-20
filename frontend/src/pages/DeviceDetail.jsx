@@ -15,6 +15,9 @@ function DeviceDetail() {
   const [device, setDevice]       = useState(null);
   const [records, setRecords]     = useState([]);
   const [loadingRecords, setLoadingRecords] = useState(true);
+  const [hasMoreRecs, setHasMoreRecs] = useState(false);
+  const [recPage, setRecPage]     = useState(0);
+  const PAGE_SIZE = 5;
   // Extraemos el load de reportMsg y errors más abajo
   const [error, setError]         = useState(null);
   const [reportMsg, setReportMsg] = useState(null);
@@ -39,19 +42,22 @@ function DeviceDetail() {
   useEffect(() => {
     if (id) {
       setLoadingRecords(true);
-      recordsApi.list(id)
-        .then((recs) => setRecords(recs))
+      recordsApi.list(id, PAGE_SIZE + 1, recPage * PAGE_SIZE)
+        .then((recs) => {
+          setHasMoreRecs(recs.length > PAGE_SIZE);
+          setRecords(recs.slice(0, PAGE_SIZE));
+        })
         .catch((err) => setError(err.message))
         .finally(() => setLoadingRecords(false));
     }
-  }, [id]);
+  }, [id, recPage]);
 
   const handleRequestReport = async () => {
     setReportMsg(null);
     try {
       console.log("Solicitando reporte para device_id:", id);
       await telemetryApi.requestReport(id);
-      setReportMsg("✓ Reporte solicitado exitosamente. Te llegara un correo de confirmación.");
+      setReportMsg("✓ Reporte solicitado exitosamente. Se puede ver en la pestaña de reportes.");
     } catch (err) {
       setReportMsg(`Error: ${err.message}`);
     }
@@ -86,7 +92,7 @@ function DeviceDetail() {
     }
   };
 
-  if (loadingDevices || loadingRecords) {
+  if (loadingDevices && !device) {
     return (
       <AppLayout pageTitle="Dispositivos">
         <p className="text-gray-400 text-sm">Loading...</p>
@@ -178,49 +184,91 @@ function DeviceDetail() {
       {/* Recent Data */}
       <div className="bg-white border border-gray-200 rounded-2xl p-6 mb-4">
         <h3 className="text-base font-bold text-gray-900 mb-3">Ultimas Mediciones</h3>
-        {records.length === 0 ? (
-          <div className="bg-gray-50 rounded-xl p-6 text-sm text-gray-600 font-mono">
-            <p className="mb-2 text-gray-500 font-sans font-medium">Envía un registro con este formato a la siguiente ruta <span className="font-bold text-purple-700 bg-purple-100 mx-4 px-2 py-0.5 rounded">POST {window.location.origin}/api/registers/received</span>: </p>
-            <pre className="bg-gray-800 text-green-400 p-4 rounded-lg overflow-x-auto">
-              {`{  
-      "device_id": "${device.device_uuid}",
-      "time_procesing": 12,
-      "values": {
-                  "temperatura": 24.5,
-                  "humedad": 60
-      }
- }`}
-            </pre>
-          </div>
+
+        {/* Endpoint hint — always visible */}
+        <div className="bg-gray-50 rounded-xl p-4 mb-4 text-sm text-gray-600 font-mono">
+          <p className="mb-2 text-gray-500 font-sans font-medium text-xs">
+            Publica registros con este formato en:
+            <span className="font-bold text-purple-700 bg-purple-100 ml-2 px-2 py-0.5 rounded">
+              POST {import.meta.env.VITE_API_URL}/registers/received
+            </span>
+          </p>
+          <pre className="bg-gray-800 text-green-400 p-3 rounded-lg overflow-x-auto text-xs">
+{`{
+  "device_id": "${device.device_uuid}",
+  "time_procesing": 12,
+  "values": { "temperatura": 24.5, "humedad": 60 }
+}`}
+          </pre>
+        </div>
+
+        {loadingRecords ? (
+          <p className="text-sm text-gray-400">Cargando mediciones...</p>
+        ) : records.length === 0 ? (
+          <p className="text-sm text-gray-400">Aún no hay mediciones registradas.</p>
         ) : (
-          <div className="rounded-2xl overflow-hidden border border-gray-200">
-            <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr>
-                <th className="border border-gray-300 px-4 py-2 text-center font-semibold text-gray-800">
-                  Hora
-                </th>
-                <th className="border border-gray-300 px-4 py-2 text-center font-semibold text-gray-800">
-                  Contenido
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {records.map((row, i) => (
-                <tr key={i}>
-                  <td className="border border-gray-200 px-4 py-2 text-gray-600">
-                    {new Date(row.created_at).toLocaleString()}
-                  </td>
-                  <td className="border border-gray-200 px-4 py-2 text-gray-600 font-mono text-xs">
-                    {typeof row.values === "object"
-                      ? JSON.stringify(row.values)
-                      : row.values}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
+          <>
+            <div className="rounded-2xl overflow-hidden border border-gray-200">
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr>
+                    <th className="border border-gray-300 px-4 py-2 text-center font-semibold text-gray-800 w-40">
+                      Hora
+                    </th>
+                    <th className="border border-gray-300 px-4 py-2 text-left font-semibold text-gray-800">
+                      Valores
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {records.map((row, i) => (
+                    <tr key={i}>
+                      <td className="border border-gray-200 px-4 py-2 text-gray-500 text-xs whitespace-nowrap">
+                        {new Date(row.created_at).toLocaleString()}
+                      </td>
+                      <td className="border border-gray-200 px-4 py-2">
+                        {typeof row.values === "object" && row.values !== null ? (
+                          <div className="flex flex-wrap gap-1.5">
+                            {Object.entries(row.values).map(([k, v]) => (
+                              <span
+                                key={k}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-50 border border-purple-100 rounded-lg text-xs"
+                              >
+                                <span className="font-semibold text-purple-700">{k}</span>
+                                <span className="text-gray-500">·</span>
+                                <span className="text-gray-800">{String(v)}</span>
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="font-mono text-xs text-gray-600">{String(row.values)}</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            <div className="flex items-center justify-end gap-3 mt-3">
+              <button
+                disabled={recPage === 0}
+                onClick={() => setRecPage((p) => p - 1)}
+                className="px-3 py-1 text-sm rounded border border-gray-200 disabled:opacity-40 hover:bg-gray-50"
+              >
+                ← Anterior
+              </button>
+              <span className="text-xs text-gray-500">Página {recPage + 1}</span>
+              <button
+                disabled={!hasMoreRecs}
+                onClick={() => setRecPage((p) => p + 1)}
+                className="px-3 py-1 text-sm rounded border border-gray-200 disabled:opacity-40 hover:bg-gray-50"
+              >
+                Siguiente →
+              </button>
+            </div>
+          </>
         )}
       </div>
 
@@ -239,7 +287,9 @@ function DeviceDetail() {
       <div className="flex items-center justify-between">
         <button
           onClick={handleRequestReport}
-          className="px-5 py-2 rounded-full border border-gray-400 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          disabled={records.length === 0 && recPage === 0}
+          className="px-5 py-2 rounded-full border border-gray-400 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+          title={records.length === 0 && recPage === 0 ? "No hay registros para generar un reporte" : undefined}
         >
           Solicitar Reporte
         </button>

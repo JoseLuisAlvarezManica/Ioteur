@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
 import { authApi } from "../api/auth";
 
 function decodeJwtPayload(token) {
@@ -60,6 +60,51 @@ export function AuthProvider({ children }) {
 
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState(null);
+  const refreshTimerRef       = useRef(null);
+
+  // Schedule a proactive token refresh 60 s before the JWT expires.
+  // This prevents the access token from being expired when the refresh
+  // endpoint is called (which itself requires a valid token via @must_be_logged_in).
+  const scheduleTokenRefresh = useCallback(() => {
+    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    const payload = decodeJwtPayload(token);
+    if (!payload?.exp) return;
+
+    const msUntilExpiry = payload.exp * 1000 - Date.now();
+    const delay = msUntilExpiry - 60_000; // refresh 60 s early
+    if (delay <= 0) return; // already expired or too close — let 401 handler deal with it
+
+    refreshTimerRef.current = setTimeout(async () => {
+      try {
+        const data = await authApi.refresh();
+        const newToken = data.access_token || data.token;
+        localStorage.setItem("token", newToken);
+        if (data.refresh_token) {
+          localStorage.setItem("refresh_token", data.refresh_token);
+        }
+        scheduleTokenRefresh(); // arm next cycle
+      } catch {
+        // Proactive refresh failed silently; the 401 handler in client.js
+        // will attempt one final refresh when the next request fires.
+      }
+    }, delay);
+  }, []);
+
+  // Arm / disarm the timer whenever the user session changes.
+  useEffect(() => {
+    if (user) {
+      scheduleTokenRefresh();
+    } else {
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+    }
+    return () => {
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+    };
+  }, [user, scheduleTokenRefresh]);
 
   const syncUser = useCallback(async () => {
     const me = await authApi.me();

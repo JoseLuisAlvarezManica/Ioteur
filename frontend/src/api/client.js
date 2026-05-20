@@ -14,6 +14,12 @@ function processQueue(error, token = null) {
   failedQueue = [];
 }
 
+function clearSession() {
+  localStorage.removeItem("token");
+  localStorage.removeItem("refresh_token");
+  localStorage.removeItem("user");
+}
+
 async function request(path, options = {}, isRetry = false) {
   const token = localStorage.getItem("token");
 
@@ -32,62 +38,67 @@ async function request(path, options = {}, isRetry = false) {
     const refreshToken = localStorage.getItem("refresh_token");
 
     if (refreshToken) {
+      // Another refresh already in progress — queue this request until it resolves
       if (isRefreshing) {
         try {
           const newToken = await new Promise((resolve, reject) => {
             failedQueue.push({ resolve, reject });
           });
-          options.headers = options.headers || {};
-          options.headers.Authorization = `Bearer ${newToken}`;
-          return request(path, options, true);
-        } catch (err) {
-          return Promise.reject(err);
+          return request(
+            path,
+            { ...options, headers: { ...options.headers, Authorization: `Bearer ${newToken}` } },
+            true
+          );
+        } catch {
+          // Refresh failed while we were queued — fall through to logout
         }
-      }
+      } else {
+        isRefreshing = true;
+        try {
+          const refreshHeaders = {
+            "Content-Type": "application/json",
+            "x-refresh-token": refreshToken,
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          };
 
-      isRefreshing = true;
+          const refreshRes = await fetch(`${BASE_URL}/auth/refresh`, {
+            method: "POST",
+            headers: refreshHeaders,
+          });
 
-      try {
-        const refreshHeaders = {
-          "Content-Type": "application/json",
-          "x-refresh-token": refreshToken
-        };
-        
-        if (token) {
-           refreshHeaders.Authorization = `Bearer ${token}`; // Mantenemos el bearer actual
-        }
+          if (refreshRes.ok) {
+            const data = await refreshRes.json();
+            const newToken = data.access_token || data.token;
+            const newRefreshToken = data.refresh_token;
 
-        const refreshRes = await fetch(`${BASE_URL}/auth/refresh`, {
-          method: "POST",
-          headers: refreshHeaders,
-        });
+            localStorage.setItem("token", newToken);
+            if (newRefreshToken) {
+              localStorage.setItem("refresh_token", newRefreshToken);
+            }
 
-        if (refreshRes.ok) {
-          const data = await refreshRes.json();
-          const newToken = data.access_token || data.token;
-          const newRefreshToken = data.refresh_token;
-          
-          localStorage.setItem("token", newToken);
-          if (newRefreshToken) {
-             localStorage.setItem("refresh_token", newRefreshToken);
+            processQueue(null, newToken);
+            isRefreshing = false;
+
+            // Retry original request with new token (not via finally to avoid early flag reset)
+            return request(
+              path,
+              { ...options, headers: { ...options.headers, Authorization: `Bearer ${newToken}` } },
+              true
+            );
+          } else {
+            // Refresh token rejected by server — drain queue then log out
+            processQueue(new Error("Session expired"), null);
           }
-
-          processQueue(null, newToken);
-
-          options.headers = options.headers || {};
-          options.headers.Authorization = `Bearer ${newToken}`;
-          return request(path, options, true);
+        } catch (err) {
+          // Network error during refresh — drain queue then log out
+          processQueue(err, null);
+        } finally {
+          isRefreshing = false;
         }
-      } catch (err) {
-        // Ignoramos el catch para pasar a limpiar el user abajo
-      } finally {
-        isRefreshing = false;
       }
     }
 
-    localStorage.removeItem("token");
-    localStorage.removeItem("refresh_token");
-    localStorage.removeItem("user");
+    clearSession();
     window.location.href = "/";
     return;
   }

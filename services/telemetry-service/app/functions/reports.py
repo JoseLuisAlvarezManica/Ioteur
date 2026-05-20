@@ -76,6 +76,14 @@ async def create_last_day_report(body: bytes, request_id: str) -> DailyReport | 
     user_uuid = data.get("user_uuid") or data.get("userUuid") or data.get("user_id")
     records: list[dict] = data.get("records", [])
 
+    if not records:
+        logger.warning(
+            "No records in telemetry payload for device %s, skipping report",
+            device_id,
+            extra={"event": "telemetry.report_no_records"},
+        )
+        return None
+
     if not device_id:
         logger.error(
             "Rabbit payload is missing a device identifier",

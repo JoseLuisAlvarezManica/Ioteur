@@ -8,6 +8,9 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react(), tailwindcss()],
+    define: {
+      'import.meta.env.VITE_API_URL': JSON.stringify(API_URL),
+    },
     server: {
       proxy: {
         '/api': {
