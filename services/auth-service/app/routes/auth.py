@@ -4,8 +4,8 @@ from typing import Any, Annotated
 from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from fastapi import APIRouter, Depends, HTTPException, status, Header
+from sqlalchemy import select, func
+from fastapi import APIRouter, Depends, HTTPException, status, Header, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError
 import redis.asyncio as aioredis
@@ -22,6 +22,7 @@ from ..schemas import (
     UserUpdate,
     UserSelfUpdate,
     UserIdResponse,
+    UsersPageResponse,
 )
 
 
@@ -106,6 +107,37 @@ async def signup(body: SignUp, db: db_dependency):
 @router.post("/admin/register", status_code=status.HTTP_201_CREATED)
 async def register_admin(body: SignUp, db: db_dependency):
     await _create_user(body, "admin", db)
+
+
+@router.get(
+    "/user/",
+    status_code=status.HTTP_200_OK,
+    response_model=UsersPageResponse,
+)
+async def get_all_users(
+    db: db_dependency,
+    page: int = Query(default=1, ge=1, description="Page number"),
+    page_size: int = Query(default=10, ge=1, le=100, description="Items per page"),
+):
+    # Count total users
+    total_result = await db.execute(select(func.count()).select_from(Users))
+    total = total_result.scalar()
+
+    # Fetch paginated users
+    offset = (page - 1) * page_size
+    result = await db.execute(select(Users).offset(offset).limit(page_size))
+    users = result.scalars().all()
+
+    return UsersPageResponse(
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=(total + page_size - 1) // page_size,
+        users=[
+            UserIdResponse(id=u.id, name=u.name, email=u.email, role=u.role)
+            for u in users
+        ],
+    )
 
 
 @router.get(

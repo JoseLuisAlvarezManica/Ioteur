@@ -126,6 +126,58 @@ Registra un nuevo usuario con rol `admin`.
 
 ---
 
+### `GET /auth/user/`
+Obtiene la lista paginada de todos los usuarios.
+**Auth:** Admin
+**Query Params:**
+- `page` — Número de página (default: `1`).
+- `page_size` — Cantidad de items por página (default: `10`, máx: `100`).
+**Response `200 OK`:**
+```json
+{
+  "total": 3,
+  "page": 1,
+  "page_size": 5,
+  "total_pages": 1,
+  "users": [
+    {
+      "id": "gAAAAABqDfeSXE8oAfl3enf1Pz61kubsUxCy2YbYJMuEBc6eRhutjmG-gugNBsS5tDayIJXgGIp54LXwq1HRp0Dl2c54ENbSCS8lkMhiGrDvg0O3dDRFcCfIKZA9UjYdoKhLaUV7DkZG",
+      "name": "Usuario 1",
+      "email": "usuario1@example.com",
+      "role": "user"
+    },
+    {
+      "id": "gAAAAABqDfeSXE8oAfl3enf1Pz61kubsUxCy2YbYJMuEBc6eRhutjmG-gugNBsS5tDayIJXgGIp54LXwq1HRp0Dl2c54ENbSCS8lkMhiGrDvg0O3dDRFcCfIKZA9UjYdoKhLaUV7DkZG",
+      "name": "Usuario 2",
+      "email": "usuario2@example.com",
+      "role": "user"
+    }
+  ]
+}
+```
+**Errores:**
+- `401 Unauthorized` — Token inválido o expirado.
+- `403 Forbidden` — El usuario no tiene rol admin.
+---
+
+### `GET /auth/user/{user_id}`
+Obtiene los datos de un usuario por su UUID.
+**Auth:** Admin
+**Path Params:**
+- `user_id` — UUID del usuario.
+**Response `200 OK`:**
+```json
+{
+  "id": "uuid",
+  "name": "Juan Pérez",
+  "email": "juan@example.com",
+  "role": "user"
+}
+```
+**Errores:**
+- `404 Not Found` — Usuario no encontrado.
+---
+
 ### `GET /auth/user/by-email/{email}`
 
 Obtiene los datos de un usuario por su correo electrónico.
