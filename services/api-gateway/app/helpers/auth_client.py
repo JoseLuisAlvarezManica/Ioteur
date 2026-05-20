@@ -29,6 +29,11 @@ class AuthClient:
         response = await self.session.get(endpoint, headers=headers or {})
         return response.status_code, response.json()
 
+    async def patch(self, endpoint: str, data: dict, headers: dict | None = None):
+        logger.info("AuthClient PATCH %s", endpoint)
+        response = await self.session.patch(endpoint, json=data, headers=headers or {})
+        return response.status_code, response.json()
+
 
 async def get_auth_client():
     async with httpx.AsyncClient(

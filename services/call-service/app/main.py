@@ -10,17 +10,19 @@ import logging
 from .config import settings
 from .logging_config import JsonFormatter
 from .helpers.redis_client import init_redis, close_redis
+from .helpers.scheduler import scheduler_loop
 from .routes.device import device_router
 from .routes.register import register_router
 from .routes.reports import reports_router
 from .routes.system import system_router
+from .routes.notifications import notifications_router
 
 handler = logging.StreamHandler()
 handler.setFormatter(JsonFormatter())
-logging.basicConfig(
-    level=getattr(logging, settings.LOG_LEVEL, logging.INFO),
-    handlers=[handler],
-)
+_app_logger = logging.getLogger("app")
+_app_logger.setLevel(getattr(logging, settings.LOG_LEVEL, logging.INFO))
+_app_logger.addHandler(handler)
+_app_logger.propagate = False
 
 logging.getLogger("pika").setLevel(logging.WARNING)
 
@@ -31,7 +33,11 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     logger.info("Starting up Call Service", extra={"event": "startup"})
     await init_redis()
+    _scheduler_task = asyncio.create_task(scheduler_loop())
+    logger.info("Scheduler started", extra={"event": "scheduler.start"})
     yield
+    _scheduler_task.cancel()
+    await asyncio.gather(_scheduler_task, return_exceptions=True)
     await close_redis()
     logger.info("Shutting down Call Service", extra={"event": "shutdown"})
 
@@ -50,6 +56,7 @@ app.include_router(device_router)
 app.include_router(register_router)
 app.include_router(reports_router)
 app.include_router(system_router)
+app.include_router(notifications_router)
 
 
 @app.get("/", tags=["root"])

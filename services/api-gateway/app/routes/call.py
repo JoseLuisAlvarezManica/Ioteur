@@ -33,7 +33,8 @@ async def verify_internal_key(
 )
 @must_be_logged_in
 async def register_device(request: Request, body: RegisterDevice, client: call_dep):
-    code, data = await client.post("/devices/register", body.model_dump())
+    payload = {**body.model_dump(), "user_id": request.state.username}
+    code, data = await client.post("/devices/register", payload)
     if code != status.HTTP_202_ACCEPTED:
         raise HTTPException(status_code=code, detail=data)
     return data
@@ -66,27 +67,14 @@ async def list_devices(request: Request, client: call_dep):
 
 
 @router.get(
-    "/devices/{user_id}",
+    "/devices/me",
     status_code=status.HTTP_200_OK,
     dependencies=[Depends(bearer_scheme)],
 )
 @must_be_logged_in
-async def get_device_by_user(request: Request, user_id: str, client: call_dep):
-    code, data = await client.get(f"/devices/{user_id}")
+async def get_device_by_user(request: Request, client: call_dep):
+    code, data = await client.get(f"/devices/{request.state.username}")
     if code != status.HTTP_200_OK:
-        raise HTTPException(status_code=code, detail=data)
-    return data
-
-
-@router.delete(
-    "/devices/{device_id}",
-    status_code=status.HTTP_202_ACCEPTED,
-    dependencies=[Depends(bearer_scheme)],
-)
-@must_be_logged_in
-async def delete_device(request: Request, device_id: str, client: call_dep):
-    code, data = await client.delete(f"/devices/{device_id}")
-    if code != status.HTTP_202_ACCEPTED:
         raise HTTPException(status_code=code, detail=data)
     return data
 
@@ -99,7 +87,6 @@ async def delete_device(request: Request, device_id: str, client: call_dep):
     status_code=status.HTTP_202_ACCEPTED,
     dependencies=[Depends(bearer_scheme)],
 )
-@must_be_logged_in
 async def register_received(request: Request, body: RegisterReceived, client: call_dep):
     code, data = await client.post("/registers/received", body.model_dump())
     if code != status.HTTP_202_ACCEPTED:
@@ -233,6 +220,72 @@ async def get_reports_by_date(
             "limit": limit,
             "skip": skip,
         },
+    )
+    if code != status.HTTP_200_OK:
+        raise HTTPException(status_code=code, detail=data)
+    return data
+
+
+# --- Notifications ---
+
+
+@router.get(
+    "/notifications/device/{device_id}",
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(bearer_scheme)],
+)
+@must_be_logged_in
+async def get_notifications_by_device(
+    request: Request,
+    device_id: str,
+    client: call_dep,
+    limit: int = Query(100, ge=1, le=1000),
+    skip: int = Query(0, ge=0),
+):
+    code, data = await client.get(
+        f"/notifications/device/{device_id}", params={"limit": limit, "skip": skip}
+    )
+    if code != status.HTTP_200_OK:
+        raise HTTPException(status_code=code, detail=data)
+    return data
+
+
+@router.get(
+    "/notifications/me",
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(bearer_scheme)],
+)
+@must_be_logged_in
+async def get_my_notifications(
+    request: Request,
+    client: call_dep,
+    limit: int = Query(100, ge=1, le=1000),
+    skip: int = Query(0, ge=0),
+):
+    code, data = await client.get(
+        f"/notifications/user/{request.state.username}",
+        params={"limit": limit, "skip": skip},
+    )
+    if code != status.HTTP_200_OK:
+        raise HTTPException(status_code=code, detail=data)
+    return data
+
+
+@router.get(
+    "/notifications/user/{user_id}",
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(bearer_scheme)],
+)
+@must_be_admin
+async def get_notifications_by_user(
+    request: Request,
+    user_id: str,
+    client: call_dep,
+    limit: int = Query(100, ge=1, le=1000),
+    skip: int = Query(0, ge=0),
+):
+    code, data = await client.get(
+        f"/notifications/user/{user_id}", params={"limit": limit, "skip": skip}
     )
     if code != status.HTTP_200_OK:
         raise HTTPException(status_code=code, detail=data)
