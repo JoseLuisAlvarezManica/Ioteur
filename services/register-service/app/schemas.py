@@ -16,6 +16,10 @@ class RegisterRecord(BaseModel):
     def serialize_uuid(self, v: UUID) -> str:
         return str(v)
 
+    @field_serializer("created_at")
+    def serialize_dt(self, v: datetime) -> str:
+        return v.isoformat()
+
     model_config = {"populate_by_name": True}
 
 

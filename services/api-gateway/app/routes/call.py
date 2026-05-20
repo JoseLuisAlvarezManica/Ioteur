@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 from typing import Annotated
-
+import re
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 
 from ..config import settings
@@ -14,6 +14,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["call"])
 
 call_dep = Annotated[CallClient, Depends(get_call_client)]
+
+MAC_ADDRESS_REGEX = re.compile(r"^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$")
 
 
 async def verify_internal_key(
@@ -33,6 +35,11 @@ async def verify_internal_key(
 )
 @must_be_logged_in
 async def register_device(request: Request, body: RegisterDevice, client: call_dep):
+    if not MAC_ADDRESS_REGEX.match(body.mac_address):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid MAC address format. Expected format: XX:XX:XX:XX:XX:XX",
+        )
     payload = {**body.model_dump(), "user_id": request.state.user_id}
     code, data = await client.post("/devices/register", payload)
     if code != status.HTTP_202_ACCEPTED:
@@ -75,6 +82,19 @@ async def list_devices(request: Request, client: call_dep):
 async def get_device_by_user(request: Request, client: call_dep):
     code, data = await client.get(f"/devices/{request.state.user_id}")
     if code != status.HTTP_200_OK:
+        raise HTTPException(status_code=code, detail=data)
+    return data
+
+
+@router.delete(
+    "/devices/{device_id}",
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(bearer_scheme)],
+)
+@must_be_logged_in
+async def delete_device(request: Request, device_id: str, client: call_dep):
+    code, data = await client.delete(f"/devices/{device_id}")
+    if code != status.HTTP_202_ACCEPTED:
         raise HTTPException(status_code=code, detail=data)
     return data
 

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -17,6 +17,9 @@ def _to_response(device: Device) -> Device_Register_Response:
         mac_address=device.mac_address,
         report_interval=device.report_interval,
         status=device.status,
+        icon=device.icon,
+        color=device.color,
+        group=device.group,
     )
 
 

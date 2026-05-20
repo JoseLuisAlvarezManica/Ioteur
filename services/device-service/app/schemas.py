@@ -6,10 +6,19 @@ class Register_Device(BaseModel):
     device_name: str
     mac_address: str
     report_interval: int
+    icon: str | None = "sensor"
+    color: str | None = "#000000"
+    group: str | None = None
 
 
 class Device_Register_Response(Register_Device):
     device_uuid: str
+    device_name: str
+    mac_address: str
+    report_interval: int
+    icon: str | None = "sensor"
+    color: str | None = "#000000"
+    group: str | None = None
     status: str
 
 
@@ -17,8 +26,6 @@ class Update_Device(BaseModel):
     device_uuid: str
     report_interval: int | None = None
     status: str | None = None
-
-
-class Device_Update_Response(BaseModel):
-    device_uuid: str
-    status: str
+    icon: str | None = None
+    color: str | None = None
+    group: str | None = None

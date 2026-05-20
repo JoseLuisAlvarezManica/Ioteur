@@ -26,6 +26,11 @@ class CallClient:
         response = await self.session.get(endpoint, params=params)
         return response.status_code, response.json()
 
+    async def delete(self, endpoint: str):
+        logger.info("CallClient DELETE %s", endpoint)
+        response = await self.session.delete(endpoint)
+        return response.status_code, response.json()
+
 
 async def get_call_client():
     async with httpx.AsyncClient(
