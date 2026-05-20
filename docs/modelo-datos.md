@@ -35,6 +35,9 @@ Almacena los dispositivos IoT registrados, gestionada por `device-service`.
 | `mac_address` | `VARCHAR(17)` | NOT NULL, UNIQUE | Dirección MAC |
 | `report_interval` | `INTEGER` | NOT NULL, CHECK > 0 | Intervalo de reporte en segundos |
 | `status` | `VARCHAR(20)` | NOT NULL, DEFAULT 'active' | Estado: `active` / `inactive` |
+| `icon` | `VARCHAR(50)` | NULLABLE, DEFAULT senson | Indica el icono que el front ocupa |
+| `color` | `VARCHAR(50)` | NULLABLE, DEFAULT #000000 | Indica el color del icono |
+| `group` | `VARCHAR(50)` | NULLABLE | Organización lógica para un dispositivo |
 | `last_seen` | `INTERVAL` | NULLABLE | Tiempo desde el último heartbeat |
 | `created_at` | `DATETIME` | NOT NULL, DEFAULT NOW() | Fecha de registro |
 
