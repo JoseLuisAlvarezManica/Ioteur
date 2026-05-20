@@ -1,7 +1,24 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import AppLayout from "../../layouts/AppLayout";
+import { devicesApi } from "../../api/devices";
 
 function AdminDashboard() {
+  const [totalDevices, setTotalDevices] = useState(0);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const devices = await devicesApi.list();
+        if (Array.isArray(devices)) {
+          setTotalDevices(devices.length);
+        }
+      } catch (error) {
+        console.error("Error fetching admin stats:", error);
+      }
+    };
+    fetchStats();
+  }, []);
+
   return (
     <AppLayout>
       <div className="flex flex-col gap-6">
@@ -9,15 +26,15 @@ function AdminDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
             <h3 className="text-lg font-medium text-gray-500">Total Users</h3>
-            <p className="text-4xl font-bold text-gray-900 mt-2">124</p>
+            <p className="text-4xl font-bold text-gray-900 mt-2">--</p>
           </div>
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
             <h3 className="text-lg font-medium text-gray-500">Total Devices</h3>
-            <p className="text-4xl font-bold text-gray-900 mt-2">56</p>
+            <p className="text-4xl font-bold text-gray-900 mt-2">{totalDevices}</p>
           </div>
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
             <h3 className="text-lg font-medium text-gray-500">Active Alerts</h3>
-            <p className="text-4xl font-bold text-red-600 mt-2">3</p>
+            <p className="text-4xl font-bold text-red-600 mt-2">--</p>
           </div>
         </div>
       </div>

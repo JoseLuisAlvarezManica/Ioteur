@@ -34,9 +34,6 @@ function Login() {
     <main className="min-h-screen bg-slate-50 flex flex-col">
       <div className="bg-white shadow-sm border-b border-gray-200 px-6 py-4 flex items-center justify-between">
         <span className="font-bold text-xl text-purple-700 tracking-tight flex items-center gap-2">
-          <svg width="24" height="24" viewBox="0 0 80 80" fill="none">
-            <polyline points="10,62 22,50 30,56 40,44 50,50 62,36 72,40" fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
           Ioteur
         </span>
         <span className="text-gray-400 text-sm">Secure Login</span>
@@ -46,13 +43,8 @@ function Login() {
         <div className="bg-white shadow-xl rounded-3xl p-10 w-full max-w-[480px] flex flex-col items-center gap-6 border border-purple-100">
 
           {/* Logo */}
-          <div className="w-28 h-28 bg-gradient-to-tr from-purple-500 to-indigo-600 shadow-lg rounded-3xl flex items-center justify-center text-white p-4">
-            <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
-              <circle cx="40" cy="38" r="4" fill="currentColor"/>
-              <path d="M28 29 Q40 17 52 29" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
-              <path d="M21 22 Q40 6 59 22" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
-              <polyline points="10,62 22,50 30,56 40,44 50,50 62,36 72,40" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
+          <div className="w-28 h-28 bg-gradient-to-tr from-white to-purple-200 shadow-lg rounded-3xl flex items-center justify-center text-white p-4">
+            <img src="/logoioteur.svg" alt="Logo" className="w-16 h-16"/>
           </div>
 
           {/* Title con nombre */}

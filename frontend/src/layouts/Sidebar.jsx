@@ -57,13 +57,9 @@ function Sidebar() {
     <aside className={`w-64 bg-gray-100 rounded-2xl p-5 flex flex-col gap-4 self-start max-h-full overflow-y-auto`}>
       {/* Logo */}
 <div className="flex items-center gap-3 mb-2">
-  <div className="w-10 h-10 border-2 border-gray-800 rounded-xl flex items-center justify-center flex-shrink-0">
-    <svg width="28" height="28" viewBox="0 0 80 80" fill="none">
-      <circle cx="40" cy="34" r="4" fill="#1a1a1a"/>
-      <path d="M28 25 Q40 13 52 25" fill="none" stroke="#1a1a1a" strokeWidth="2.5" strokeLinecap="round"/>
-      <path d="M19 17 Q40 1 61 17" fill="none" stroke="#1a1a1a" strokeWidth="2.5" strokeLinecap="round"/>
-      <polyline points="8,62 22,48 32,55 40,43 50,50 62,34 74,39" fill="none" stroke="#1a1a1a" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
+  {/* Logo */}
+  <div className="w-18 h-18 bg-gradient-to-tr from-white to-purple-200 shadow-lg rounded-3xl flex items-center justify-center text-white p-4">
+    <img src="/logoioteur.svg" alt="Logo" className="w-10 h-10"/>
   </div>
   <div>
     <span className="text-lg font-bold text-gray-900 tracking-tight">
