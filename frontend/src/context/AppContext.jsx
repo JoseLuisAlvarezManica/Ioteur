@@ -19,8 +19,7 @@ export function AppProvider({ children }) {
     }
     setLoadingDevices(true);
     try {
-      const data = await devicesApi.getByUser(user.id);
-      console.log("Dispositivos obtenidos:", data);
+      const data = await devicesApi.getByUser();
       setDevices(data);
       
       const uniqueGroups = [...new Set(data.map(d => d.group).filter(Boolean))];
