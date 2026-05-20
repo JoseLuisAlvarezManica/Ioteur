@@ -33,9 +33,5 @@ async def read_devices(db: AsyncSession = Depends(get_db)):
 async def read_device_by_user_id(user_id: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Device).where(Device.user_uuid == user_id))
     devices = result.scalars().all()
-    if not devices:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Device not found for user {user_id}",
-        )
+    if not devices: return []
     return [_to_response(d) for d in devices]
