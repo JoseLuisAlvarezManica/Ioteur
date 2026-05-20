@@ -69,6 +69,14 @@ class UserIdResponse(BaseModel):
     role: str
 
 
+class UsersPageResponse(BaseModel):
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+    users: list[UserIdResponse]
+
+
 # --- Call Service ---
 
 

@@ -1,7 +1,7 @@
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status, Query
 
 from ..decorators import must_be_admin, must_be_logged_in, bearer_scheme
 from ..helpers.auth_client import AuthClient, get_auth_client
@@ -13,6 +13,7 @@ from ..schemas import (
     UserUpdate,
     UserSelfUpdate,
     UserIdResponse,
+    UsersPageResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -40,6 +41,44 @@ async def register_admin(request: Request, body: SignUp, auth_client: auth_depen
         "/auth/admin/register", body.model_dump(), headers=request.state.auth_headers
     )
     if code != status.HTTP_201_CREATED:
+        raise HTTPException(status_code=code, detail=data)
+    return data
+
+
+@router.get(
+    "/user/",
+    status_code=status.HTTP_200_OK,
+    response_model=UsersPageResponse,
+    dependencies=[Depends(bearer_scheme)],
+)
+@must_be_admin
+async def get_all_users(
+    request: Request,
+    auth_client: auth_dependency,
+    page: int = Query(default=1, ge=1, description="Page number"),
+    page_size: int = Query(default=10, ge=1, le=100, description="Items per page"),
+):
+    code, data = await auth_client.get(
+        f"/auth/user/?page={page}&page_size={page_size}",
+        headers=request.state.auth_headers,
+    )
+    if code != status.HTTP_200_OK:
+        raise HTTPException(status_code=code, detail=data)
+    return data
+
+
+@router.get(
+    "/user/{user_id}",
+    status_code=status.HTTP_200_OK,
+    response_model=UserIdResponse,
+    dependencies=[Depends(bearer_scheme)],
+)
+@must_be_admin
+async def get_user_by_id(user_id: str, request: Request, auth_client: auth_dependency):
+    code, data = await auth_client.get(
+        f"/auth/user/{user_id}", headers=request.state.auth_headers
+    )
+    if code != status.HTTP_200_OK:
         raise HTTPException(status_code=code, detail=data)
     return data
 

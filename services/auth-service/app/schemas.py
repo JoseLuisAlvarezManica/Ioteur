@@ -67,3 +67,11 @@ class UserIdResponse(BaseModel):
     name: str
     email: EmailStr
     role: str
+
+
+class UsersPageResponse(BaseModel):
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+    users: list[UserIdResponse]
