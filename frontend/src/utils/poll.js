@@ -26,4 +26,13 @@ export async function waitForDevicePresent(deviceId, options) {
   }, options);
 }
 
-export default { delay, pollUntil, waitForDeviceAbsent, waitForDevicePresent };
+export async function waitForDeviceStatus(deviceId, expectedStatus, options) {
+  return pollUntil(async () => {
+    const list = await devicesApi.getByUser();
+    const found = list.find((d) => d.device_uuid === deviceId);
+    if (!found) return false;
+    return found.status === expectedStatus ? found : false;
+  }, options);
+}
+
+export default { delay, pollUntil, waitForDeviceAbsent, waitForDevicePresent, waitForDeviceStatus };

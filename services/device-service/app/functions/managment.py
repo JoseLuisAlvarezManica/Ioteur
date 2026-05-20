@@ -37,7 +37,7 @@ async def register_device(device_data: Register_Device) -> Device_Register_Respo
             MAC_ADDRESS_REGEX, device_data.mac_address
         ):
             raise ValueError(
-                "Invalid MAC address format. Expected format: XX:XX:XX:XX:XX:XX"
+                "MAC inválida. Usa solo caracteres hexadecimales (0-9, A-F) en formato AA:AA:AA:AA:AA:AA"
             )
 
         new_device = Device(

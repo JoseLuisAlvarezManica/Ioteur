@@ -144,7 +144,7 @@ export function AddDeviceModal({ userId, onClose, onAdded }) {
       <div className="bg-white rounded-2xl p-8 w-full max-w-md md:max-w-2xl shadow-xl">
 
         <h2 className="text-xl font-bold text-gray-900 mb-5">
-          Add Device
+          Añadir nuevo dispositivo
         </h2>
 
         {error && (
@@ -159,7 +159,7 @@ export function AddDeviceModal({ userId, onClose, onAdded }) {
           <div className="flex flex-col gap-4">
 
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-gray-700">Device name</label>
+              <label className="text-sm font-medium text-gray-700">Nombre del dispositivo</label>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -280,7 +280,7 @@ export function AddDeviceModal({ userId, onClose, onAdded }) {
                 maskPosition: "center",
               }}
             />
-            <span className="text-sm text-gray-600">Preview del icono</span>
+            <span className="text-sm text-gray-600">Vista previa del icono</span>
           </div>
               
           {/* ACTIONS */}
@@ -334,7 +334,7 @@ function Dashboard() {
   }, {});
 
   return (
-    <AppLayout pageTitle="Dashboard">
+    <AppLayout pageTitle="Dashboard de Dispositivos">
       <UserBar />
 
       {/* Notas moradas */}
