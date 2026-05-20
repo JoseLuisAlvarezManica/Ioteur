@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import AppLayout from "../layouts/AppLayout";
 import { devicesApi } from "../api/devices";
+import { waitForDevicePresent } from "../utils/poll";
 import { useAuth } from "../context/AuthContext";
 import { useAppContext } from "../context/AppContext";
 
@@ -98,6 +99,12 @@ export function AddDeviceModal({ userId, onClose, onAdded }) {
 
   const icons = ["radar", "sensor", "vehículo", "casa", "micro", "rasp"];
 
+  useEffect(() => {
+    if (!group && groups.length > 0) {
+      setGroup(groups[0]);
+    }
+  }, [group, groups]);
+
   const handleSubmit = async () => {
     if (!name.trim() || !mac.trim() || !interval) {
       setError("Todos los campos son requeridos.");
@@ -115,7 +122,13 @@ export function AddDeviceModal({ userId, onClose, onAdded }) {
         reportInterval: interval,
         color,
         icon,
+        group,
       });
+
+      // Espera hasta que el device aparezca upstream (asíncrono vía RabbitMQ)
+      if (newDevice?.device_uuid) {
+        await waitForDevicePresent(newDevice.device_uuid, { interval: 100, maxAttempts: 10 });
+      }
 
       onAdded(newDevice);
       onClose();
@@ -299,7 +312,7 @@ export function AddDeviceModal({ userId, onClose, onAdded }) {
 /* ── Dashboard ───────────────────────────────────────────────── */
 function Dashboard() {
   const { user } = useAuth();
-  const { devices, groups, loadingDevices: loading, errorDevices: error, fetchDevices } = useAppContext();
+  const { devices, groups, loadingDevices: loading, errorDevices: error, fetchDevices, globalRefresh } = useAppContext();
   const [filter, setFilter]       = useState("Todos");
   const [groupFilter, setGroupFilter] = useState("Todos los grupos");
   const [showModal, setShowModal] = useState(false);
@@ -393,7 +406,7 @@ function Dashboard() {
           onClose={() => setShowModal(false)}
           onAdded={() => {
             setShowModal(false);
-            fetchDevices();
+            globalRefresh();
           }}
         />
       )}

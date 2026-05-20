@@ -2,7 +2,7 @@ import { api } from "./client";
 
 export const devicesApi = {
   list: () => api.get("/devices/"),
-  getByUser: (userId) => api.get(`/devices/${userId}`),
+  getByUser: () => api.get(`/devices/me`),
   create: (data) =>
   api.post("/devices/register", {
     user_id: data.userId,
@@ -11,6 +11,7 @@ export const devicesApi = {
     report_interval: Number(data.reportInterval),
     icon: data.icon ?? "sensor",
     color: data.color ?? "#000000",
+    group: data.group?.trim() || undefined,
   }),
   update: (data) =>
     api.put("/devices/update", {

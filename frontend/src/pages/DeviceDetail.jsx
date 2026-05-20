@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import AppLayout from "../layouts/AppLayout";
 import { devicesApi } from "../api/devices";
+import { waitForDeviceAbsent, waitForDevicePresent } from "../utils/poll";
 import { recordsApi, telemetryApi } from "../api/telemetry";
 import { UserBar, FilterBar } from "./Dashboard";
 import { useAppContext } from "../context/AppContext";
@@ -9,7 +10,7 @@ import { useAppContext } from "../context/AppContext";
 function DeviceDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { devices, loadingDevices, fetchDevices } = useAppContext();
+  const { devices, loadingDevices, fetchDevices, globalRefresh } = useAppContext();
 
   const [device, setDevice]       = useState(null);
   const [records, setRecords]     = useState([]);
@@ -60,7 +61,11 @@ function DeviceDetail() {
     setDeleting(true);
     try {
       await devicesApi.delete(id);
-      await fetchDevices();
+
+      // Espera corta hasta que el device deje de existir upstream
+      await waitForDeviceAbsent(id, { interval: 100, maxAttempts: 6 });
+
+      await globalRefresh();
       navigate("/dashboard");
     } catch (err) {
       alert(err.message);
@@ -71,11 +76,8 @@ function DeviceDetail() {
   const handleToggleStatus = async () => {
     const newStatus = device.status === "active" ? "inactive" : "active";
     try {
-      const updated = await devicesApi.updateStatus(id, newStatus);
-      // Puesto que usamos AppContext, deberíamos recargarlo... 
-      // pero por ahora actualizamos visualmente copiando o llamando a fetchDevices:
-      await fetchDevices();
-      setDevice(prev => ({ ...prev, status: newStatus }));
+      await devicesApi.updateStatus(id, newStatus);
+      await globalRefresh();
     } catch (err) {
       alert(err.message);
     }
@@ -251,7 +253,7 @@ function DeviceDetail() {
           onClose={() => setShowEditModal(false)}
           onUpdated={() => {
             setShowEditModal(false);
-            fetchDevices();
+            globalRefresh();
           }}
         />
       )}
@@ -289,6 +291,9 @@ function EditDeviceModal({ device, onClose, onUpdated }) {
         icon,
         group,
       });
+
+      // Espera a que la actualización se refleje upstream
+      await waitForDevicePresent(device.device_uuid, { interval: 500, maxAttempts: 6 });
 
       onUpdated();
     } catch (err) {
