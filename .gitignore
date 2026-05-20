@@ -18,6 +18,8 @@ venv/
 .venv/
 env/
 
+/frontend/node_modules/
+
 # IDE
 .vscode/
 .idea/
