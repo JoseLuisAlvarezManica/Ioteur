@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import AppLayout from "../layouts/AppLayout";
 import { devicesApi } from "../api/devices";
-import { telemetryApi } from "../api/telemetry";
+import { recordsApi, telemetryApi } from "../api/telemetry";
 import { UserBar } from "./Dashboard";
 import { useAuth } from "../context/AuthContext";
 import ReportCard from "../components/ReportCharts";
+import { waitForReport } from "../utils/poll";
 
 function Reports() {
   const { user } = useAuth();
@@ -12,6 +13,8 @@ function Reports() {
   const [selectedDevice, setSelected] = useState("");
   const [reports, setReports]         = useState([]);
   const [loadingReports, setLoadingR] = useState(false);
+  const [loadingRecords, setLoadingRecords] = useState(false);
+  const [hasRecords, setHasRecords]   = useState(false);
   const [requesting, setRequesting]   = useState(false);
   const [msg, setMsg]                 = useState(null);
   const [error, setError]             = useState(null);
@@ -42,13 +45,40 @@ function Reports() {
       .finally(() => setLoadingR(false));
   }, [selectedDevice]);
 
+  // Cargar registros antes de permitir solicitar el reporte
+  useEffect(() => {
+    if (!selectedDevice) return;
+
+    setLoadingRecords(true);
+    setHasRecords(false);
+
+    recordsApi.list(selectedDevice)
+      .then((recs) => {
+        setHasRecords(Array.isArray(recs) && recs.length > 0);
+      })
+      .catch(() => setHasRecords(false))
+      .finally(() => setLoadingRecords(false));
+  }, [selectedDevice]);
+
   const handleRequestReport = async () => {
     if (!selectedDevice) return;
+    if (!hasRecords) {
+      setMsg("No se puede solicitar un reporte sin registros.");
+      return;
+    }
     setRequesting(true);
     setMsg(null);
     try {
       await telemetryApi.requestReport(selectedDevice);
-      setMsg("✓ Reporte solicitado. Aparecerá aquí una vez procesado.");
+      setMsg("✓ Reporte solicitado. Esperando actualización automática...");
+      const updatedReports = await waitForReport(selectedDevice, {
+        interval: 1500,
+        maxAttempts: 12,
+      });
+      if (updatedReports) {
+        setReports(Array.isArray(updatedReports) ? updatedReports : [updatedReports]);
+        setMsg("✓ Reporte actualizado automáticamente.");
+      }
     } catch (err) {
       setMsg(`Error: ${err.message}`);
     } finally {
@@ -85,12 +115,24 @@ function Reports() {
 
         <button
           onClick={handleRequestReport}
-          disabled={requesting || !selectedDevice}
+          disabled={requesting || !selectedDevice || loadingRecords || !hasRecords}
           className="px-5 py-2.5 rounded-xl border border-gray-400 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60 flex-shrink-0"
         >
-          {requesting ? "Solicitando..." : "Solicitar Reporte"}
+          {requesting
+            ? "Solicitando..."
+            : loadingRecords
+              ? "Verificando registros..."
+              : hasRecords
+                ? "Solicitar Reporte"
+                : "Sin registros"}
         </button>
       </div>
+
+      {selectedDevice && !loadingRecords && !hasRecords && (
+        <p className="text-sm text-amber-600 mb-4">
+          Este dispositivo no tiene registros, así que no se puede solicitar el reporte.
+        </p>
+      )}
 
       {/* Feedback */}
       {msg && (

@@ -7,6 +7,7 @@ import {
   Tooltip,
   CartesianGrid,
 } from "recharts";
+import MetricPieChart from "./MetricPieChart";
 
 function computeTrend(values) {
   // simple linear regression over indices
@@ -31,6 +32,20 @@ function computeTrend(values) {
     const v = intercept + slope * i;
     return Number.isFinite(v) ? v : 0;
   });
+}
+
+function toNumericValue(value) {
+  if (value == null) return NaN;
+  const cleaned = String(value)
+    .replace(/\s+/g, "")
+    .replace(/,/, ".")
+    .replace(/[^0-9.\-]/g, "");
+  const numeric = parseFloat(cleaned);
+  return Number.isFinite(numeric) ? numeric : NaN;
+}
+
+function isNumericSeries(values) {
+  return values.length > 0 && values.every((value) => Number.isFinite(toNumericValue(value)));
 }
 
 const ReportCard = ({ reports = [] }) => {
@@ -64,16 +79,7 @@ const ReportCard = ({ reports = [] }) => {
                 const pct = metric.percentaje_change ?? metric.percentajeChange ?? metric.percentaje;
                 const top = metric.top_value ?? metric.topValue ?? metric.top;
                 const valores = metric.value_list || metric.valueList || metric.valueListRaw || [];
-
-                const toNum = (v) => {
-                  if (v == null) return NaN;
-                  const s = String(v).replace(/\s+/g, "").replace(/,/, ".").replace(/[^0-9.\-]/g, "");
-                  const n = parseFloat(s);
-                  return Number.isFinite(n) ? n : NaN;
-                };
-                const numericValues = valores.map((v) => toNum(v));
-                const tendencia = computeTrend(valores);
-                const chartData = numericValues.map((v, i) => ({ name: `${i + 1}`, valor: Number(v).toFixed(3), tendencia: Number(tendencia[i]).toFixed(3) }));
+                const numericSeries = isNumericSeries(valores);
 
                 return (
                   <div key={name} className="p-4 bg-gray-50 rounded-xl border border-gray-100">
@@ -86,16 +92,31 @@ const ReportCard = ({ reports = [] }) => {
                     </div>
 
                     <div className="w-full h-44 mt-3">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={chartData}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="name" />
-                          <YAxis />
-                          <Tooltip />
-                          <Line type="monotone" dataKey="valor" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />
-                          <Line type="linear" dataKey="tendencia" stroke="#ef4444" strokeWidth={2} strokeDasharray="5 5" dot={false} />
-                        </LineChart>
-                      </ResponsiveContainer>
+                      {numericSeries ? (
+                        <>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart
+                              data={valores.map((value, index) => {
+                                const numericValue = toNumericValue(value);
+                                return {
+                                  name: `${index + 1}`,
+                                  valor: Number(numericValue).toFixed(3),
+                                  tendencia: Number(computeTrend(valores)[index]).toFixed(3),
+                                };
+                              })}
+                            >
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis dataKey="name" />
+                              <YAxis />
+                              <Tooltip />
+                              <Line type="monotone" dataKey="valor" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />
+                              <Line type="linear" dataKey="tendencia" stroke="#ef4444" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </>
+                      ) : (
+                        <MetricPieChart values={valores} />
+                      )}
                     </div>
                   </div>
                 );

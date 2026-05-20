@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import AppLayout from "../layouts/AppLayout";
 import { devicesApi } from "../api/devices";
-import { waitForDeviceAbsent, waitForDevicePresent, waitForDeviceStatus } from "../utils/poll";
+import { waitForDeviceAbsent, waitForDevicePresent, waitForDeviceStatus, waitForReport } from "../utils/poll";
 import { recordsApi, telemetryApi } from "../api/telemetry";
 import { UserBar, FilterBar } from "./Dashboard";
 import { useAppContext } from "../context/AppContext";
@@ -57,11 +57,14 @@ function DeviceDetail() {
     try {
       console.log("Solicitando reporte para device_id:", id);
       await telemetryApi.requestReport(id);
-      setReportMsg("✓ Reporte solicitado exitosamente. Se puede ver en la pestaña de reportes.");
+      setReportMsg("✓ Reporte solicitado. Esperando actualización automática...");
+      await waitForReport(id, { interval: 1500, maxAttempts: 12 });
+      setReportMsg("✓ Reporte actualizado automáticamente. Se puede ver en la pestaña de reportes.");
     } catch (err) {
       setReportMsg(`Error: ${err.message}`);
     }
   };
+  
 
   const handleDelete = async () => {
     if (!confirm("¿Seguro que deseas eliminar este dispositivo?")) return;

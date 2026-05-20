@@ -18,12 +18,22 @@ MAX_RETRIES = 3
 RETRY_DELAY = 1  # seconds between retries
 
 
+def _normalize_metric_value(value: object) -> str:
+    if isinstance(value, bool):
+        return "1" if value else "0"
+
+    text = str(value)
+    if text.lower() in {"true", "false"}:
+        return "1" if text.lower() == "true" else "0"
+    return text
+
+
 def _compute_metrics(records: list[dict]) -> list[MetricData]:
     """Aggregate per-metric statistics from raw register records."""
     metric_values: dict[str, list[str]] = {}
     for record in records:
         for key, val in record.get("values", {}).items():
-            metric_values.setdefault(key, []).append(str(val))
+            metric_values.setdefault(key, []).append(_normalize_metric_value(val))
 
     metrics: list[MetricData] = []
     for name, values in metric_values.items():

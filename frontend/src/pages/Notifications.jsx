@@ -9,8 +9,76 @@ const severityStyles = {
   critical: { dot: "bg-red-500",    badge: "bg-red-50 text-red-700 border-red-200" },
 };
 
+function formatNotificationField(value) {
+  if (value == null) return "-";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  const seen = new WeakSet();
+  const safeSerialize = (input) => {
+    if (input == null) return input;
+    if (typeof input === "string" || typeof input === "number" || typeof input === "boolean") {
+      return input;
+    }
+    if (input instanceof Date) {
+      return input.toISOString();
+    }
+    if (Array.isArray(input)) {
+      return input.map((item) => safeSerialize(item));
+    }
+    if (typeof input === "object") {
+      if (seen.has(input)) return "[Circular]";
+      seen.add(input);
+      const output = {};
+      for (const [key, nestedValue] of Object.entries(input)) {
+        output[key] = safeSerialize(nestedValue);
+      }
+      return output;
+    }
+    return String(input);
+  };
+
+  if (typeof value === "object") {
+    const preferredKeys = ["message", "reason", "detail", "text", "title", "value", "name"];
+
+    for (const key of preferredKeys) {
+      if (Object.prototype.hasOwnProperty.call(value, key)) {
+        const nested = formatNotificationField(value[key]);
+        if (nested !== "-") return nested;
+      }
+    }
+
+    try {
+      return JSON.stringify(safeSerialize(value), null, 2);
+    } catch {
+      return "[unserializable value]";
+    }
+  }
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return "[unserializable value]";
+  }
+}
+
+function normalizeNotification(notification) {
+  return {
+    id: formatNotificationField(notification?.id ?? notification?._id ?? notification?.created_at),
+    severity: formatNotificationField(notification?.severity),
+    reason: formatNotificationField(notification?.reason),
+    message: formatNotificationField(notification?.message),
+    createdAt: notification?.created_at || notification?.createdAt || null,
+  };
+}
+
 function NotificationItem({ notif }) {
-  const styles = severityStyles[notif.severity] || severityStyles.info;
+  const normalized = normalizeNotification(notif);
+  const styles = severityStyles[normalized.severity] || severityStyles.info;
 
   return (
     <div className="flex items-start gap-4 p-4 rounded-2xl border bg-white border-gray-100 transition-colors">
@@ -24,13 +92,17 @@ function NotificationItem({ notif }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
           <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border capitalize ${styles.badge}`}>
-            {notif.severity}
+            {normalized.severity || "info"}
           </span>
         </div>
-        <p className="text-sm text-gray-800 font-medium">{notif.reason}</p>
-        <p className="text-sm text-gray-500 mt-0.5 break-words">{notif.message}</p>
+        <p className="text-sm text-gray-800 font-medium break-words">
+          <span className="font-semibold">Motivo:</span> {normalized.reason || "-"}
+        </p>
+        <p className="text-sm text-gray-500 mt-0.5 break-words">
+          <span className="font-semibold text-gray-700">Mensaje:</span> {normalized.message || "-"}
+        </p>
         <p className="text-xs text-gray-400 mt-1">
-          {new Date(notif.created_at).toLocaleString()}
+          {normalized.createdAt ? new Date(normalized.createdAt).toLocaleString() : "-"}
         </p>
       </div>
     </div>
@@ -41,19 +113,19 @@ function Notifications() {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading]             = useState(true);
   const [error, setError]                 = useState(null);
-  const [filter, setFilter]               = useState("all");
 
   useEffect(() => {
     notificationsApi.list()
-      .then(setNotifications)
+      .then((data) => {
+        const items = Array.isArray(data)
+          ? data
+          : data?.notifications || data?.items || data?.data || [];
+
+        setNotifications(items);
+      })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, []);
-
-  const filtered = notifications.filter((n) => {
-    if (filter === "all") return true;
-    return n.severity === filter;
-  });
 
   return (
     <AppLayout pageTitle="Notificaciones">
@@ -71,40 +143,24 @@ function Notifications() {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-2 mb-6 flex-wrap">
-        {["all", "info", "warning", "critical"].map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`px-4 py-1.5 rounded-full border text-sm capitalize transition-colors ${
-              filter === f
-                ? "border-gray-900 text-gray-900 font-medium"
-                : "border-gray-400 text-gray-500 hover:border-gray-600"
-            }`}
-          >
-            {f}
-          </button>
-        ))}
-      </div>
 
       {loading && <p className="text-sm text-gray-400">Cargando notificaciones...</p>}
       {error   && <p className="text-sm text-red-500">{error}</p>}
 
-      {!loading && !error && filtered.length === 0 && (
+      {!loading && !error && notifications.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 text-gray-400">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-3">
             <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
             <path d="M13.73 21a2 2 0 01-3.46 0"/>
           </svg>
-          <p className="text-sm">No hay notificaciones</p>
+          <p className="text-sm">No hay notificaciones para mostrar.</p>
         </div>
       )}
 
-      {!loading && !error && filtered.length > 0 && (
+      {!loading && !error && notifications.length > 0 && (
         <div className="flex flex-col gap-3">
-          {filtered.map((n) => (
-            <NotificationItem key={n.id} notif={n} />
+          {notifications.map((n) => (
+            <NotificationItem key={formatNotificationField(n?.id ?? n?._id ?? n?.created_at)} notif={n} />
           ))}
         </div>
       )}

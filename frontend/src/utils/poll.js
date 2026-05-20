@@ -10,6 +10,7 @@ export async function pollUntil(fn, { interval = 1000, maxAttempts = 6 } = {}) {
 }
 
 import { devicesApi } from "../api/devices";
+import { telemetryApi } from "../api/telemetry";
 
 export async function waitForDeviceAbsent(deviceId, options) {
   return pollUntil(async () => {
@@ -35,4 +36,18 @@ export async function waitForDeviceStatus(deviceId, expectedStatus, options) {
   }, options);
 }
 
-export default { delay, pollUntil, waitForDeviceAbsent, waitForDevicePresent, waitForDeviceStatus };
+export async function waitForReport(deviceId, options) {
+  return pollUntil(async () => {
+    try {
+      const report = await telemetryApi.getReport(deviceId);
+      if (Array.isArray(report)) {
+        return report.length > 0 ? report : false;
+      }
+      return report ? [report] : false;
+    } catch {
+      return false;
+    }
+  }, options);
+}
+
+export default { delay, pollUntil, waitForDeviceAbsent, waitForDevicePresent, waitForDeviceStatus, waitForReport };
