@@ -141,7 +141,9 @@ async def get_device_by_user(user_id: str):
 @device_router.get("/status/{device_id}")
 async def get_device_status(device_id: str):
     try:
-        code, data = await http_get(settings.DEVICE_SERVICE_URL, f"/devices/status/{device_id}")
+        code, data = await http_get(
+            settings.DEVICE_SERVICE_URL, f"/devices/status/{device_id}"
+        )
         if code != status.HTTP_200_OK:
             logger.warning(
                 "device-service returned %d on GET /devices/status/%s",
@@ -156,7 +158,9 @@ async def get_device_status(device_id: str):
             )
             raise HTTPException(status_code=code, detail=data)
         logger.info(
-            "Fetched device status for device %s", device_id, extra={"event": "device.get"}
+            "Fetched device status for device %s",
+            device_id,
+            extra={"event": "device.get"},
         )
         return data
     except HTTPException:
@@ -174,6 +178,7 @@ async def get_device_status(device_id: str):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error"
         )
+
 
 @device_router.delete("/{device_id}", status_code=status.HTTP_202_ACCEPTED)
 async def delete_device(device_id: str):
