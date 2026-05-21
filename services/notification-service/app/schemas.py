@@ -44,5 +44,3 @@ class EmailNotification(BaseModel):
         return v.isoformat()
 
     model_config = {"populate_by_name": True}
-
-    model_config = {"populate_by_name": True}

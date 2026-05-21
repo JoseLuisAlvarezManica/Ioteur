@@ -33,12 +33,12 @@ function MetricPieChart({ values = [] }) {
 
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <PieChart>
+      <PieChart margin={{ right: 300 }}>
         <Pie
           data={chartData}
           dataKey="value"
           nameKey="name"
-          cx="50%"
+          cx="40%"
           cy="50%"
           outerRadius={78}
           innerRadius={36}
@@ -50,7 +50,7 @@ function MetricPieChart({ values = [] }) {
           ))}
         </Pie>
         <Tooltip />
-        <Legend />
+        <Legend layout="vertical" align="right" verticalAlign="middle" iconSize={10} iconType="circle" />
       </PieChart>
     </ResponsiveContainer>
   );

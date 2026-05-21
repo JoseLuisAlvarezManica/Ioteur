@@ -15,9 +15,15 @@ notifications_router = APIRouter(prefix="/notifications", tags=["notifications"]
 
 
 def _serialize(doc: dict) -> dict:
-    doc["id"] = str(doc.pop("_id"))
+    """Serialize MongoDB document to API response format."""
+    # Convert MongoDB ObjectId to string, keeping field name as _id for Pydantic validation
+    if "_id" in doc:
+        doc["_id"] = str(doc["_id"])
     if "device_id" in doc:
         doc["device_id"] = str(doc["device_id"])
+    if "user_id" in doc and doc["user_id"] is not None:
+        doc["user_id"] = str(doc["user_id"])
+    # created_at is already stored as ISO string in MongoDB
     if isinstance(doc.get("created_at"), datetime):
         doc["created_at"] = doc["created_at"].isoformat()
     return doc

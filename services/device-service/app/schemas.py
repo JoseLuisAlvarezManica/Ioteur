@@ -20,6 +20,7 @@ class Device_Register_Response(Register_Device):
     color: str | None = "#000000"
     group: str | None = None
     status: str
+    last_seen: str | None = None
 
 
 class Update_Device(BaseModel):

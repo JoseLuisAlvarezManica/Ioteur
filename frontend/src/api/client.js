@@ -1,4 +1,4 @@
-const BASE_URL = "/api";
+export const BASE_URL = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8000';
 
 let isRefreshing = false;
 let failedQueue = [];

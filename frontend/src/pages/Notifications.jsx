@@ -53,16 +53,26 @@ function formatNotificationField(value) {
     }
 
     try {
-      return JSON.stringify(safeSerialize(value), null, 2);
+      const serialized = safeSerialize(value);
+      const stringified = JSON.stringify(serialized, null, 2);
+      // Ensure we never return [object Object]
+      if (stringified === "[object Object]" || !stringified) {
+        return `[complex object: ${Object.keys(value).join(", ")}]`;
+      }
+      return stringified;
     } catch {
-      return "[unserializable value]";
+      return `[unserializable: ${Object.keys(value).join(", ")}]`;
     }
   }
 
   try {
-    return JSON.stringify(value);
+    const result = JSON.stringify(value);
+    if (result === "[object Object]") {
+      return `[object: ${typeof value}]`;
+    }
+    return result;
   } catch {
-    return "[unserializable value]";
+    return `[error serializing: ${typeof value}]`;
   }
 }
 
