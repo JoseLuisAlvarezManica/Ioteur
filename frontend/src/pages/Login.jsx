@@ -36,7 +36,7 @@ function Login() {
         <span className="font-bold text-xl text-purple-700 tracking-tight flex items-center gap-2">
           Ioteur
         </span>
-        <span className="text-gray-400 text-sm">Secure Login</span>
+        <span className="text-gray-400 text-sm">Inicio de sesión</span>
       </div>
 
       <div className="flex-1 flex items-center justify-center p-6 bg-gradient-to-br from-slate-50 to-purple-50">
@@ -44,7 +44,7 @@ function Login() {
 
           {/* Logo */}
           <div className="w-28 h-28 bg-gradient-to-tr from-white to-purple-200 shadow-lg rounded-3xl flex items-center justify-center text-white p-4">
-            <img src="/logoioteur.svg" alt="Logo" className="w-16 h-16"/>
+            <img src="/logoioteur.svg" alt="Logotipo" className="w-16 h-16"/>
           </div>
 
           {/* Title con nombre */}

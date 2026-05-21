@@ -8,6 +8,12 @@ const STATUS_STYLES = {
   online:   "bg-blue-100 text-blue-700",
 };
 
+const STATUS_LABELS = {
+  active:   "activo",
+  inactive: "inactivo",
+  online:   "en línea",
+};
+
 function AdminDevices() {
   const [devices, setDevices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -47,31 +53,31 @@ function AdminDevices() {
     <AppLayout>
       <div className="flex flex-col gap-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-gray-900">Manage Devices</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Gestionar Dispositivos</h1>
         </div>
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 overflow-x-auto">
           {loading ? (
-            <div className="p-4 text-center text-gray-500">Loading devices...</div>
+            <div className="p-4 text-center text-gray-500">Cargando dispositivos...</div>
           ) : error ? (
             <div className="p-4 text-center text-red-500">{error}</div>
           ) : (
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="text-gray-500 border-b border-gray-100">
-                  <th className="pb-3 font-medium">Name</th>
-                  <th className="pb-3 font-medium">MAC Address</th>
-                  <th className="pb-3 font-medium">Owner (user_id)</th>
-                  <th className="pb-3 font-medium">Group</th>
-                  <th className="pb-3 font-medium">Interval (s)</th>
-                  <th className="pb-3 font-medium">Status</th>
-                  <th className="pb-3 font-medium">Actions</th>
+                  <th className="pb-3 font-medium">Nombre</th>
+                  <th className="pb-3 font-medium">Dirección MAC</th>
+                  <th className="pb-3 font-medium">Propietario (user_id)</th>
+                  <th className="pb-3 font-medium">Grupo</th>
+                  <th className="pb-3 font-medium">Intervalo (s)</th>
+                  <th className="pb-3 font-medium">Estado</th>
+                  <th className="pb-3 font-medium">Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {devices.length === 0 ? (
                   <tr>
                     <td colSpan="7" className="py-4 text-center text-gray-500">
-                      No devices found.
+                      No se encontraron dispositivos.
                     </td>
                   </tr>
                 ) : (
@@ -92,7 +98,7 @@ function AdminDevices() {
                             STATUS_STYLES[device.status] ?? "bg-gray-100 text-gray-700"
                           }`}
                         >
-                          {device.status ?? "unknown"}
+                          {STATUS_LABELS[device.status] ?? "desconocido"}
                         </span>
                       </td>
                       <td className="py-3">
@@ -100,7 +106,7 @@ function AdminDevices() {
                           onClick={() => handleToggleStatus(device)}
                           className="text-blue-600 hover:text-blue-800 text-sm"
                         >
-                          {device.status === "active" ? "Deactivate" : "Activate"}
+                          {device.status === "active" ? "Desactivar" : "Activar"}
                         </button>
                       </td>
                     </tr>

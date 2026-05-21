@@ -54,8 +54,8 @@ const ReportCard = ({ reports = [] }) => {
   if (!hasReports) {
     return (
       <div className="bg-white border border-gray-200 rounded-2xl p-6 mb-4">
-        <h3 className="text-base font-bold text-gray-900 mb-3">Recent Data</h3>
-        <p className="text-sm text-gray-400">No records yet.</p>
+        <h3 className="text-base font-bold text-gray-900 mb-3">Datos recientes</h3>
+        <p className="text-sm text-gray-400">Aún no hay registros.</p>
       </div>
     );
   }

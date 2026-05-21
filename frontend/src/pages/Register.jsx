@@ -41,7 +41,7 @@ function Register() {
           </svg>
           Ioteur
         </span>
-        <span className="text-gray-400 text-sm">Create Account</span>
+        <span className="text-gray-400 text-sm">Crear cuenta</span>
       </div>
 
       <div className="flex-1 flex items-center justify-center p-6 bg-gradient-to-br from-slate-50 to-purple-50">
