@@ -22,6 +22,19 @@ class UpdateDeviceRequest(BaseModel):
     group: str | None = None
 
 
+class DeviceResponse(BaseModel):
+    device_uuid: str
+    user_id: str | None = None
+    device_name: str
+    mac_address: str
+    report_interval: int
+    status: str
+    icon: str | None = "sensor"
+    color: str | None = "#000000"
+    group: str | None = None
+    last_seen: str | None = None
+
+
 class RegisterReceivedRequest(BaseModel):
     device_id: str
     time_procesing: int

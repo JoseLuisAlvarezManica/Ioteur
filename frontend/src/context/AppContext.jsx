@@ -11,25 +11,25 @@ export function AppProvider({ children }) {
   const [loadingDevices, setLoadingDevices] = useState(false);
   const [errorDevices, setErrorDevices] = useState(null);
 
-  const fetchDevices = useCallback(async () => {
+  const fetchDevices = useCallback(async (opts = { silent: false }) => {
     if (!user?.id) {
       setDevices([]);
       setGroups([]);
       return;
     }
-    setLoadingDevices(true);
+    if (!opts.silent) setLoadingDevices(true);
     try {
       const data = await devicesApi.getByUser();
       setDevices(data);
-      
-      const uniqueGroups = [...new Set(data.map(d => d.group).filter(Boolean))];
+
+      const uniqueGroups = [...new Set(data.map((d) => d.group).filter(Boolean))];
       setGroups(uniqueGroups);
-      
+
       setErrorDevices(null);
     } catch (err) {
       setErrorDevices(err.message);
     } finally {
-      setLoadingDevices(false);
+      if (!opts.silent) setLoadingDevices(false);
     }
   }, [user, setDevices, setGroups, setLoadingDevices, setErrorDevices]);
 
@@ -40,6 +40,33 @@ export function AppProvider({ children }) {
       
     }
   }, [user?.id, fetchDevices, setDevices, setGroups, setLoadingDevices, setErrorDevices]);
+
+  // Poll devices periodically (silent) so UI updates when device.status changes elsewhere
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const POLL_INTERVAL = Number(import.meta.env.VITE_DEVICES_POLL_INTERVAL_MS) || 5000;
+    let mounted = true;
+
+    const tick = async () => {
+      if (!mounted) return;
+      try {
+        // silent: don't toggle loading UI during background refresh
+        await fetchDevices({ silent: true });
+      } catch (e) {
+        // ignore background errors
+      }
+    };
+
+    const id = setInterval(tick, POLL_INTERVAL);
+    // run one immediate silent tick after mount
+    tick();
+
+    return () => {
+      mounted = false;
+      clearInterval(id);
+    };
+  }, [user?.id, fetchDevices]);
 
   // Función global para refrescar todo
   const globalRefresh = useCallback(async () => {

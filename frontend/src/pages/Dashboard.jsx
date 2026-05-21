@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import AppLayout from "../layouts/AppLayout";
 import { devicesApi } from "../api/devices";
+import { BASE_URL } from "../api/client";
 import { waitForDevicePresent } from "../utils/poll";
 import { useAuth } from "../context/AuthContext";
 import { useAppContext } from "../context/AppContext";
@@ -410,9 +411,10 @@ export function UserBar() {
       try {
         const controller = new AbortController();
         const tid = setTimeout(() => controller.abort(), 4000);
-        const res = await fetch("/api/health", { signal: controller.signal });
+        const res = await fetch(`${BASE_URL}/health`, { signal: controller.signal });
         clearTimeout(tid);
-        setGwStatus(res.ok ? "online" : "offline");
+        const data = await res.json().catch(() => ({}));
+        setGwStatus(data.status === "ok" ? "online" : "offline");
       } catch {
         setGwStatus("offline");
       }

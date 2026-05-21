@@ -6,6 +6,7 @@ import { waitForDeviceAbsent, waitForDevicePresent, waitForDeviceStatus, waitFor
 import { recordsApi, telemetryApi } from "../api/telemetry";
 import { UserBar, FilterBar } from "./Dashboard";
 import { useAppContext } from "../context/AppContext";
+const BASE_URL = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8000';
 
 function DeviceDetail() {
   const { id } = useParams();
@@ -275,7 +276,7 @@ function DeviceDetail() {
           <p className="mb-2 text-gray-500 font-sans font-medium text-xs">
             Publica registros con este formato en:
             <span className="font-bold text-purple-700 bg-purple-100 ml-2 px-2 py-0.5 rounded">
-              POST {import.meta.env.VITE_API_URL}/registers/received
+              POST {BASE_URL}/registers/received
             </span>
           </p>
           <pre className="bg-gray-800 text-green-400 p-3 rounded-lg overflow-x-auto text-xs">

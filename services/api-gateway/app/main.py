@@ -41,7 +41,14 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down API Gateway Service")
 
 
-app = FastAPI(title="api-gateway", lifespan=lifespan)
+app = FastAPI(
+    title="api-gateway",
+    lifespan=lifespan,
+    docs_url=None,  # desactiva /docs
+    redoc_url=None,  # desactiva /redoc
+    openapi_url=None,  # desactiva /openapi.json
+)
+
 app.include_router(auth.router)
 app.include_router(call.router)
 
