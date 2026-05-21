@@ -29,3 +29,7 @@ class Update_Device(BaseModel):
     icon: str | None = None
     color: str | None = None
     group: str | None = None
+
+
+class Get_Status_Response(BaseModel):
+    status: str

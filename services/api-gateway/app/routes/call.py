@@ -72,6 +72,15 @@ async def list_devices(request: Request, client: call_dep):
         raise HTTPException(status_code=code, detail=data)
     return data
 
+@router.get(
+    "/devices/status/{device_id}",
+    status_code=status.HTTP_200_OK,
+)
+async def get_device_status(device_id: str, client: call_dep):
+    code, data = await client.get(f"/devices/status/{device_id}")
+    if code != status.HTTP_200_OK:
+        raise HTTPException(status_code=code, detail=data)
+    return data
 
 @router.get(
     "/devices/me",
