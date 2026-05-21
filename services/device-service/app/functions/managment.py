@@ -49,7 +49,7 @@ async def register_device(device_data: Register_Device) -> Device_Register_Respo
             group=device_data.group,
             icon=device_data.icon,
             color=device_data.color,
-            status="active",
+            status="inactive",
         )
         session.add(new_device)
         await session.commit()
