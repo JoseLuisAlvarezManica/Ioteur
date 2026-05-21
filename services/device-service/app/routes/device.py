@@ -19,7 +19,9 @@ async def _to_response(device: Device) -> Device_Register_Response:
     last_seen = None
     try:
         redis = get_redis()
-        last_seen = await redis.hget(_device_redis_key(device.device_uuid), "ultima_vez_log")
+        last_seen = await redis.hget(
+            _device_redis_key(device.device_uuid), "ultima_vez_log"
+        )
     except Exception:
         last_seen = None
 
