@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import AppLayout from "../layouts/AppLayout";
 import { devicesApi } from "../api/devices";
@@ -24,6 +24,46 @@ function DeviceDetail() {
   const [deleting, setDeleting]   = useState(false);
   const [filter, setFilter]       = useState("all");
   const [showEditModal, setShowEditModal] = useState(false);
+  const [pollingRecords, setPollingRecords] = useState(false);
+  const pollingRef = useRef(null);
+  const fetchingRecordsRef = useRef(false);
+  const lastRecordsRef = useRef([]);
+  const prevRecPageRef = useRef(recPage);
+
+  const loadRecords = useCallback(async () => {
+    if (!id || fetchingRecordsRef.current) return;
+
+    fetchingRecordsRef.current = true;
+    // Sólo mostrar loader si es la primera carga o cambió la página
+    const shouldShowLoader = (lastRecordsRef.current.length === 0) || (prevRecPageRef.current !== recPage);
+    if (shouldShowLoader) setLoadingRecords(true);
+
+    try {
+      const recs = await recordsApi.list(id);
+      const list = Array.isArray(recs) ? recs : [];
+      const pageItems = list.slice(recPage * PAGE_SIZE, recPage * PAGE_SIZE + PAGE_SIZE + 1);
+      const newRecords = pageItems.slice(0, PAGE_SIZE);
+
+      // Sólo actualizar estado si realmente hay cambios para evitar re-renders
+      try {
+        const prev = lastRecordsRef.current || [];
+        const same = JSON.stringify(prev) === JSON.stringify(newRecords);
+        if (!same) {
+          setHasMoreRecs(pageItems.length > PAGE_SIZE);
+          setRecords(newRecords);
+          lastRecordsRef.current = newRecords;
+        }
+      } finally {
+        // actualizamos referencia de página siempre
+        prevRecPageRef.current = recPage;
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      fetchingRecordsRef.current = false;
+      if (shouldShowLoader) setLoadingRecords(false);
+    }
+  }, [id, recPage]);
 
   useEffect(() => {
     // Si todavía no hay dispositivos, los refrescamos (por si el usuario entró directo a la url)
@@ -40,17 +80,41 @@ function DeviceDetail() {
   }, [devices, id]);
 
   useEffect(() => {
-    if (id) {
-      setLoadingRecords(true);
-      recordsApi.list(id, PAGE_SIZE + 1, recPage * PAGE_SIZE)
-        .then((recs) => {
-          setHasMoreRecs(recs.length > PAGE_SIZE);
-          setRecords(recs.slice(0, PAGE_SIZE));
-        })
-        .catch((err) => setError(err.message))
-        .finally(() => setLoadingRecords(false));
+    loadRecords();
+  }, [loadRecords]);
+
+  useEffect(() => {
+    if (!pollingRecords) {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+      return;
     }
-  }, [id, recPage]);
+
+    pollingRef.current = setInterval(() => {
+      loadRecords();
+    }, 10000); // cada 10 segundos
+
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+    };
+  }, [pollingRecords, loadRecords]);
+
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+      }
+    };
+  }, []);
+
+  const handleTogglePolling = () => {
+    setPollingRecords((current) => !current);
+  };
 
   const handleRequestReport = async () => {
     setReportMsg(null);
@@ -186,7 +250,25 @@ function DeviceDetail() {
 
       {/* Recent Data */}
       <div className="bg-white border border-gray-200 rounded-2xl p-6 mb-4">
-        <h3 className="text-base font-bold text-gray-900 mb-3">Ultimas Mediciones</h3>
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <h3 className="text-base font-bold text-gray-900">Ultimas Mediciones</h3>
+          <button
+            onClick={handleTogglePolling}
+            className={`px-4 py-2 rounded-full border text-sm font-medium transition-colors ${
+              pollingRecords
+                ? "border-red-300 text-red-700 bg-red-50 hover:bg-red-100"
+                : "border-gray-300 text-gray-700 bg-white hover:bg-gray-50"
+            }`}
+          >
+            {pollingRecords ? "Detener sondeo" : "Empezar sondeo"}
+          </button>
+        </div>
+
+        {pollingRecords && (
+          <p className="text-xs text-gray-500 mb-3">
+            Sondeo activo: actualizando registros cada 10000 ms.
+          </p>
+        )}
 
         {/* Endpoint hint — always visible */}
         <div className="bg-gray-50 rounded-xl p-4 mb-4 text-sm text-gray-600 font-mono">
@@ -225,7 +307,7 @@ function DeviceDetail() {
                 </thead>
                 <tbody>
                   {records.map((row, i) => (
-                    <tr key={i}>
+                    <tr key={row.id ?? row.created_at ?? i}>
                       <td className="border border-gray-200 px-4 py-2 text-gray-500 text-xs whitespace-nowrap">
                         {new Date(row.created_at).toLocaleString()}
                       </td>

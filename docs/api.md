@@ -313,6 +313,28 @@ Lista todos los dispositivos registrados.
 
 ---
 
+### `GET /devices/status/{device_id}`
+
+Obtiene el estado del dispositivo con el objetivo de apagarlo o prenderlo remotamente
+
+**Auth:** no necesita
+
+**Path Params:**
+- `device_id` — UUID del dispositivo.
+
+**Response `200 OK`:**
+```json
+[
+    "status": "inactive"
+]
+```
+
+**Errores:**
+- `404 Not Found` — No existe dispositivo con ese id.
+
+
+---
+
 ### `GET /devices/{user_id}`
 
 Obtiene el dispositivo asociado a un usuario.
