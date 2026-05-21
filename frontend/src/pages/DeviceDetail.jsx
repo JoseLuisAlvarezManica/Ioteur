@@ -163,7 +163,7 @@ function DeviceDetail() {
   if (loadingDevices && !device) {
     return (
       <AppLayout pageTitle="Dispositivos">
-        <p className="text-gray-400 text-sm">Loading...</p>
+        <p className="text-gray-400 text-sm">Cargando...</p>
       </AppLayout>
     );
   }
@@ -171,7 +171,7 @@ function DeviceDetail() {
   if (error || !device) {
     return (
       <AppLayout pageTitle="Dispositivos">
-        <p className="text-red-500 text-sm">{error || "Device not found."}</p>
+        <p className="text-red-500 text-sm">{error || "Dispositivo no encontrado."}</p>
       </AppLayout>
     );
   }
@@ -209,7 +209,7 @@ function DeviceDetail() {
             <ul className="flex flex-col justify-center gap-3 text-sm text-gray-800">
               <li><span className="font-bold">Nombre:</span> {device.device_name}</li>
               <li><span className="font-bold">Dirección MAC:</span> {device.mac_address}</li>
-              <li><span className="font-bold">Device ID:</span> {device.device_uuid}</li>
+              <li><span className="font-bold">ID del dispositivo:</span> {device.device_uuid}</li>
               <li>
                 <span className="font-bold">Última vez visto:</span>{" "}
                 {device.last_seen
@@ -225,7 +225,7 @@ function DeviceDetail() {
             <div className="flex items-center gap-2">
               <span className="font-bold">Estado:</span>
               <span className={isActive ? "text-green-600 font-medium" : "text-red-600 font-medium"}>
-                {isActive ? "Active" : "Inactive"}
+                {isActive ? "Activo" : "Inactivo"}
               </span>
               <span className={`w-3 h-3 rounded-full ${
                 isActive ? "bg-green-500" : "bg-red-500"

@@ -106,7 +106,9 @@ async function request(path, options = {}, isRetry = false) {
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    throw new Error(data?.detail || data?.message || "Error en la solicitud");
+    const raw = data?.detail || data?.message || "Error en la solicitud";
+    const msg = typeof raw === "string" ? raw : JSON.stringify(raw);
+    throw new Error(msg);
   }
 
   return data;

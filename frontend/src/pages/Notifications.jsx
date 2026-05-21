@@ -9,6 +9,12 @@ const severityStyles = {
   critical: { dot: "bg-red-500",    badge: "bg-red-50 text-red-700 border-red-200" },
 };
 
+const severityLabels = {
+  info:     "información",
+  warning:  "advertencia",
+  critical: "crítico",
+};
+
 function formatNotificationField(value) {
   if (value == null) return "-";
   if (typeof value === "string") return value;
@@ -102,7 +108,7 @@ function NotificationItem({ notif }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
           <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border capitalize ${styles.badge}`}>
-            {normalized.severity || "info"}
+            {severityLabels[normalized.severity] || severityLabels.info}
           </span>
         </div>
         <p className="text-sm text-gray-800 font-medium break-words">

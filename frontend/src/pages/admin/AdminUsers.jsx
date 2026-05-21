@@ -2,6 +2,11 @@ import React, { useEffect, useState } from "react";
 import AppLayout from "../../layouts/AppLayout";
 import { usersApi } from "../../api/users";
 
+const ROLE_LABELS = {
+  admin: "administrador",
+  user:  "usuario",
+};
+
 const PAGE_SIZE = 10;
 
 function AdminUsers() {
@@ -60,11 +65,11 @@ function AdminUsers() {
     <AppLayout>
       <div className="flex flex-col gap-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-gray-900">Manage Users</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Gestionar Usuarios</h1>
         </div>
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 overflow-hidden">
           {loading ? (
-            <div className="p-4 text-center text-gray-500">Loading users...</div>
+            <div className="p-4 text-center text-gray-500">Cargando usuarios...</div>
           ) : error ? (
             <div className="p-4 text-center text-red-500">{error}</div>
           ) : (
@@ -72,17 +77,17 @@ function AdminUsers() {
               <table className="w-full text-left">
                 <thead>
                   <tr className="text-gray-500 border-b border-gray-100">
-                    <th className="pb-3 font-medium">Name</th>
-                    <th className="pb-3 font-medium">Email</th>
-                    <th className="pb-3 font-medium">Role</th>
-                    <th className="pb-3 font-medium">Actions</th>
+                    <th className="pb-3 font-medium">Nombre</th>
+                    <th className="pb-3 font-medium">Correo electrónico</th>
+                    <th className="pb-3 font-medium">Rol</th>
+                    <th className="pb-3 font-medium">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {users.length === 0 ? (
                     <tr>
                       <td colSpan="4" className="py-4 text-center text-gray-500">
-                        No users found.
+                        No se encontraron usuarios.
                       </td>
                     </tr>
                   ) : (
@@ -98,7 +103,7 @@ function AdminUsers() {
                                 : "bg-gray-100 text-gray-700"
                             }`}
                           >
-                            {user.role}
+                            {ROLE_LABELS[user.role] ?? user.role}
                           </span>
                         </td>
                         <td className="py-4">
@@ -106,13 +111,13 @@ function AdminUsers() {
                             onClick={() => handleEdit(user)}
                             className="mr-4 text-blue-600 hover:text-blue-800 text-sm"
                           >
-                            Edit
+                            Editar
                           </button>
                           <button
                             onClick={() => handleDelete(user.id)}
                             className="text-red-600 hover:text-red-800 text-sm"
                           >
-                            Delete
+                            Eliminar
                           </button>
                         </td>
                       </tr>
@@ -129,17 +134,17 @@ function AdminUsers() {
                     onClick={() => setPage((p) => p - 1)}
                     className="px-3 py-1 text-sm rounded border border-gray-200 disabled:opacity-40 hover:bg-gray-50"
                   >
-                    ← Prev
+                    ← Anterior
                   </button>
                   <span className="text-sm text-gray-500">
-                    Page {page} of {totalPages}
+                    Página {page} de {totalPages}
                   </span>
                   <button
                     disabled={page >= totalPages}
                     onClick={() => setPage((p) => p + 1)}
                     className="px-3 py-1 text-sm rounded border border-gray-200 disabled:opacity-40 hover:bg-gray-50"
                   >
-                    Next →
+                    Siguiente →
                   </button>
                 </div>
               )}

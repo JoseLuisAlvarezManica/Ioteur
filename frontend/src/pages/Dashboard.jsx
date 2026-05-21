@@ -67,7 +67,7 @@ function DeviceCard({ device, onClick }) {
               Visto:{" "}
               {device.last_seen
                 ? new Date(device.last_seen).toLocaleDateString() + " " + new Date(device.last_seen).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-                : "No data"}
+                : "Sin datos"}
             </p>
           </div>
         </>
@@ -290,7 +290,7 @@ export function AddDeviceModal({ userId, onClose, onAdded }) {
               onClick={onClose}
               className="px-5 py-2 rounded-xl border border-gray-300 text-sm"
             >
-              Cancel
+              Cancelar
             </button>
 
             <button
@@ -298,7 +298,7 @@ export function AddDeviceModal({ userId, onClose, onAdded }) {
               disabled={loading}
               className="px-5 py-2 rounded-xl bg-purple-700 text-white text-sm"
             >
-              {loading ? "Adding..." : "Add"}
+              {loading ? "Agregando..." : "Agregar"}
             </button>
           </div>
           </div>
@@ -436,8 +436,8 @@ export function UserBar() {
     gwStatus === "online"  ? "bg-green-500" :
     gwStatus === "offline" ? "bg-red-500"   : "bg-yellow-400";
   const label =
-    gwStatus === "online"  ? "Online"  :
-    gwStatus === "offline" ? "Offline" : "...";
+    gwStatus === "online"  ? "En línea"  :
+    gwStatus === "offline" ? "Desconectado" : "...";
 
   return (
     <div className="flex justify-end items-center gap-3 mb-4">
@@ -451,10 +451,10 @@ export function UserBar() {
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-gray-600">
         <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
       </svg>
-      <span className="text-sm text-gray-700">{user.name || "Name"}</span>
+      <span className="text-sm text-gray-700">{user.name || "Nombre"}</span>
       <button
         onClick={handleLogout}
-        title="Logout"
+        title="Cerrar sesión"
         className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-300 hover:bg-gray-100"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

@@ -59,14 +59,14 @@ function Sidebar() {
 <div className="flex items-center gap-3 mb-2">
   {/* Logo */}
   <div className="w-18 h-18 bg-gradient-to-tr from-white to-purple-200 shadow-lg rounded-3xl flex items-center justify-center text-white p-4">
-    <img src="/logoioteur.svg" alt="Logo" className="w-10 h-10"/>
+    <img src="/logoioteur.svg" alt="Logotipo" className="w-10 h-10"/>
   </div>
   <div>
     <span className="text-lg font-bold text-gray-900 tracking-tight">
       <span className="font-bold">iot</span>
       <span className="font-normal text-gray-500">eur</span>
     </span>
-    <p className="text-xs text-gray-400 leading-none">IoT monitoring</p>
+    <p className="text-xs text-gray-400 leading-none">Monitoreo IoT</p>
   </div>
 </div>
 
@@ -91,7 +91,7 @@ function Sidebar() {
 
       {user?.role === "admin" && (
         <div className="mt-4 pt-4 border-t border-gray-200">
-          <p className="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Admin</p>
+          <p className="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Administrador</p>
           <nav className="flex flex-col gap-1">
             {adminNavItems.map((item) => {
               const active = location.pathname === item.path;
