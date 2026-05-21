@@ -170,6 +170,30 @@ print(Fernet.generate_key().decode())
 
 Consulta la documentación oficial de Railway para más detalles: [https://docs.railway.app/](https://docs.railway.app/)
 
+### Despliegue del Frontend en Vercel
+
+[Vercel](https://vercel.com/) permite desplegar el frontend de React de forma gratuita y continua desde el repositorio.
+
+**Pasos:**
+
+1. Crea una cuenta en [vercel.com](https://vercel.com/) e importa el repositorio.
+2. En la configuración del proyecto, establece:
+   - **Root Directory:** `frontend`
+   - **Framework Preset:** Vite
+   - **Build Command:** `npm run build` (o `pnpm run build`)
+   - **Output Directory:** `dist`
+3. Agrega la siguiente **variable de entorno** en *Settings → Environment Variables*:
+
+   | Variable | Valor |
+   |---|---|
+   | `VITE_API_GATEWAY_URL` | URL pública del API Gateway en Railway (ej. `https://ioteur.up.railway.app`) |
+
+4. Haz clic en **Deploy**. Vercel ejecutará `vite build` inyectando la variable en el bundle.
+
+> ⚠️ Las variables con prefijo `VITE_` se incrustan en el bundle en tiempo de build. Cualquier cambio en ellas requiere un nuevo despliegue.
+
+**URL del frontend desplegado:** https://ioteur.vercel.app/
+
 ---
 
 ## Instrucciones de Ejecución
@@ -250,6 +274,7 @@ El archivo `.env.example` contiene todas las variables con valores de ejemplo. C
 | `REGISTER_SERVICE_URL`         | URL interna de register-service                    |
 | `TELEMETRY_SERVICE_URL`        | URL interna de telemetry-service                   |
 | `API_GATEWAY_URL`              | URL interna del API Gateway                        |
+| `API_GATEWAY_URL`              | URL interna del notification-service               |
 | `PRIVATE_KEY`                  | Clave privada RSA utilizada para firmar JWT        |
 | `PUBLIC_KEY`                   | Clave pública RSA utilizada para validar JWT       |
 | `UUID_ENCRYPTION_KEY`          | Clave unica para encriptar o desencriptar información sensible       |
