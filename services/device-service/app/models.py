@@ -15,7 +15,7 @@ class Device(Base):
     device_name: Mapped[str] = mapped_column(String(255), nullable=False)
     mac_address: Mapped[str] = mapped_column(String(17), nullable=False, unique=True)
     report_interval: Mapped[int] = mapped_column(Integer, nullable=False)
-    status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="inactive")
     icon: Mapped[str] = mapped_column(String(50), nullable=True, default="sensor")
     color: Mapped[str] = mapped_column(String(20), nullable=True, default="#000000")
     group: Mapped[str] = mapped_column(String(50), nullable=True)

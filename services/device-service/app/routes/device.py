@@ -37,6 +37,7 @@ async def read_device_by_user_id(user_id: str, db: AsyncSession = Depends(get_db
         return []
     return [_to_response(d) for d in devices]
 
+
 @device_router.get("/status/{device_id}", response_model=Get_Status_Response)
 async def read_device_by_id(device_id: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Device).where(Device.device_uuid == device_id))
@@ -44,4 +45,3 @@ async def read_device_by_id(device_id: str, db: AsyncSession = Depends(get_db)):
     if not device:
         raise HTTPException(status_code=404, detail="Dispositivo no encontrado")
     return Get_Status_Response(status=device.status)
-
