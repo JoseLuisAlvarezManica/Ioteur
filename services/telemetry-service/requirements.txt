@@ -1,0 +1,6 @@
+fastapi
+uvicorn[standard]
+pydantic[email]>=2,<3
+pydantic-settings>=2,<3
+motor
+pika

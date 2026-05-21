@@ -1,0 +1,384 @@
+{
+  "info": {
+    "name": "Ioteur – API Gateway",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Colección completa de endpoints del API Gateway de Ioteur (http://localhost:8000)."
+  },
+  "variable": [
+    { "key": "base_url",      "value": "http://localhost:8000" },
+    { "key": "access_token",  "value": "" },
+    { "key": "refresh_token", "value": "" },
+    { "key": "user_id",       "value": "" },
+    { "key": "device_uuid",   "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Signup",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/auth/signup", "host": ["{{base_url}}"], "path": ["auth", "signup"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"password\": \"secret123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.access_token) {",
+                  "  pm.collectionVariables.set('access_token', json.access_token);",
+                  "  try {",
+                  "    const payload = JSON.parse(atob(json.access_token.split('.')[1]));",
+                  "    if (payload.sub) pm.collectionVariables.set('user_id', payload.sub);",
+                  "  } catch(e) {}",
+                  "}",
+                  "if (json.refresh_token) pm.collectionVariables.set('refresh_token', json.refresh_token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/auth/login", "host": ["{{base_url}}"], "path": ["auth", "login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john@example.com\",\n  \"password\": \"secret123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Me",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": { "raw": "{{base_url}}/auth/me", "host": ["{{base_url}}"], "path": ["auth", "me"] }
+          }
+        },
+        {
+          "name": "Refresh token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.access_token)  pm.collectionVariables.set('access_token',  json.access_token);",
+                  "if (json.refresh_token) pm.collectionVariables.set('refresh_token', json.refresh_token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization",  "value": "Bearer {{access_token}}" },
+              { "key": "x-refresh-token","value": "{{refresh_token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/auth/refresh", "host": ["{{base_url}}"], "path": ["auth", "refresh"] },
+            "body": { "mode": "raw", "raw": "{}" }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization",  "value": "Bearer {{access_token}}" },
+              { "key": "x-refresh-token","value": "{{refresh_token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/auth/logout", "host": ["{{base_url}}"], "path": ["auth", "logout"] },
+            "body": { "mode": "raw", "raw": "{}" }
+          }
+        },
+        {
+          "name": "Admin – Register admin user",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/auth/admin/register", "host": ["{{base_url}}"], "path": ["auth", "admin", "register"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Admin User\",\n  \"email\": \"admin@example.com\",\n  \"password\": \"adminpass123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Admin – Get user by email",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/auth/user/by-email/john@example.com",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "user", "by-email", "john@example.com"]
+            }
+          }
+        },
+        {
+          "name": "Admin – Update user",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/user/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "user", "{{user_id}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"New Name\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Admin – Delete user",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/auth/user/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "user", "{{user_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Devices",
+      "item": [
+        {
+          "name": "Register device",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/devices/register", "host": ["{{base_url}}"], "path": ["devices", "register"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"device_name\": \"Sensor Temp 01\",\n  \"mac_address\": \"AA:BB:CC:DD:EE:FF\",\n  \"report_interval\": 60\n}"
+            }
+          }
+        },
+        {
+          "name": "Update device",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/devices/update", "host": ["{{base_url}}"], "path": ["devices", "update"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"device_uuid\": \"{{device_uuid}}\",\n  \"report_interval\": 120,\n  \"status\": \"active\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get device by user",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json && json.device_uuid) pm.collectionVariables.set('device_uuid', json.device_uuid);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/devices/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["devices", "{{user_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Admin – List all devices",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": { "raw": "{{base_url}}/devices/", "host": ["{{base_url}}"], "path": ["devices", ""] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Registers (Telemetría)",
+      "item": [
+        {
+          "name": "Send telemetry data",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/registers/received", "host": ["{{base_url}}"], "path": ["registers", "received"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"device_id\": \"{{device_uuid}}\",\n  \"time_procesing\": 120,\n  \"values\": {\n    \"temperature\": 23.5,\n    \"humidity\": 60\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "Get registers by device",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/registers/{{device_uuid}}?limit=100&skip=0",
+              "host": ["{{base_url}}"],
+              "path": ["registers", "{{device_uuid}}"],
+              "query": [
+                { "key": "limit", "value": "100" },
+                { "key": "skip",  "value": "0" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get registers by date range",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/registers/{{device_uuid}}/by-date?from=2026-01-01T00:00:00&to=2026-12-31T23:59:59&limit=100&skip=0",
+              "host": ["{{base_url}}"],
+              "path": ["registers", "{{device_uuid}}", "by-date"],
+              "query": [
+                { "key": "from",  "value": "2026-01-01T00:00:00" },
+                { "key": "to",    "value": "2026-12-31T23:59:59" },
+                { "key": "limit", "value": "100" },
+                { "key": "skip",  "value": "0" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reports",
+      "item": [
+        {
+          "name": "Generate daily report",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/reports/{{device_uuid}}/generate",
+              "host": ["{{base_url}}"],
+              "path": ["reports", "{{device_uuid}}", "generate"]
+            },
+            "body": { "mode": "raw", "raw": "" }
+          }
+        },
+        {
+          "name": "Get reports by device",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/reports/{{device_uuid}}?limit=100&skip=0",
+              "host": ["{{base_url}}"],
+              "path": ["reports", "{{device_uuid}}"],
+              "query": [
+                { "key": "limit", "value": "100" },
+                { "key": "skip",  "value": "0" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get reports by date range",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/reports/{{device_uuid}}/by-date?from=2026-01-01T00:00:00&to=2026-12-31T23:59:59&limit=100&skip=0",
+              "host": ["{{base_url}}"],
+              "path": ["reports", "{{device_uuid}}", "by-date"],
+              "query": [
+                { "key": "from",  "value": "2026-01-01T00:00:00" },
+                { "key": "to",    "value": "2026-12-31T23:59:59" },
+                { "key": "limit", "value": "100" },
+                { "key": "skip",  "value": "0" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Bootstrap (Directo al servicio)",
+      "description": "Endpoints que van directo a auth-service:8001, sin pasar por el API Gateway. Sirven para crear el primer usuario admin cuando aún no existe ninguno.",
+      "item": [
+        {
+          "name": "Crear primer admin (directo auth-service)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "http://localhost:8001/auth/admin/register",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8001",
+              "path": ["auth", "admin", "register"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Super Admin\",\n  \"email\": \"admin@ioteur.com\",\n  \"password\": \"adminpass123\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "System (Internal)",
+      "item": [
+        {
+          "name": "Relay system error",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",    "value": "application/json" },
+              { "key": "x-internal-key",  "value": "ff605b51-4c4b-42e7-985b-866c3257b08d" }
+            ],
+            "url": { "raw": "{{base_url}}/system/error", "host": ["{{base_url}}"], "path": ["system", "error"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"db_connection_failed\",\n  \"message\": \"Could not connect to PostgreSQL\",\n  \"severity\": \"critical\",\n  \"service_name\": \"device-service\"\n}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

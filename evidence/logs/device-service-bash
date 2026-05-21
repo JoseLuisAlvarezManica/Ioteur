@@ -1,0 +1,199 @@
+luigi@MSI:~$ # Fase 1 registros antes de parar el servicio
+luigi@MSI:~$ BASE_URL="http://localhost:8000"
+luigi@MSI:~$ curl -s -X POST "$BASE_URL/auth/signup" \
+  -H "Content-Type: application/json" \
+  -H "X-Request-Id: req-signup-001" \
+  -d '{"name":"John Doe","email":"john@example.com","password":"SuperSecret123!"}' | jq .
+null
+luigi@MSI:~$ RESPONSE=$(curl -s -X POST "$BASE_URL/auth/login" \
+  -H "Content-Type: application/json" \
+  -H "X-Request-Id: req-login-001" \
+  -d '{"email":"john@example.com","password":"SuperSecret123!"}')
+
+echo "$RESPONSE" | jq .
+
+ACCESS_TOKEN=$(echo "$RESPONSE" | jq -r '.access_token')
+{
+  "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0eXBlIjoiYWNjZXNzIiwic3ViIjoiOGJjZGNlNjctZWFiOC00YTM4LTgwNWYtZTk5ODdlOGRmMGY3IiwiZW1haWwiOiJqb2huQGV4YW1wbGUuY29tIiwicm9sZSI6InVzZXIiLCJpYXQiOjE3NzkwNzUzMzQsImV4cCI6MTc3OTA3NjIzNCwianRpIjoiNDE4MDQ4ZmMtMjZmMC00MDdjLWI2YzMtYTMxZWMwNjEyY2RhIn0.ZY6nVTBtp9FV-D6p2RPGrSVzDNWL-dHcExvSSbKXFCGgt6tBuYrxoFBBruDM9zBKnDG-LeLUxn0Vr_4ejtQmeWQLlcTqHRBk6DYgmvpgCEopwUqnLL79J0WWLN7PXRc7uBVVj1IwjCyxw4LJPXmNxl1pjyiviExugKL06XHwrdkaKxYW_jNwJwl3_1wPUN9PxS3pgYMec_-mm4HWXIKChRcCuuWLTDvbPQ8oxJIwsUv3RVqXlgFoX7uneGLKASD1xWDFtHiKrn-jxOI2nQpDx985nLtBmMl2jbrAfcVmFKWsXcq-dPgOEwIlsckn9F8bbRngXMUGeWvQBbt1btdfRg",
+  "refresh_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0eXBlIjoicmVmcmVzaCIsInN1YiI6IjhiY2RjZTY3LWVhYjgtNGEzOC04MDVmLWU5OTg3ZThkZjBmNyIsImVtYWlsIjoiam9obkBleGFtcGxlLmNvbSIsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNzc5MDc1MzM0LCJleHAiOjE3Nzk2ODAxMzQsImp0aSI6IjI1MDY1Y2ExLTEyNTctNDI1MS04ZDFiLWZhYTJmODVkMjMyOCJ9.TOfVIshoVN015N98WrBXCL1uSmBWZSaPk3EvDmCFyermqI9rL2Go2ua9jXAiZmLtHvx12dBhbHbDrWVTHkLZZy_xvZinhDsYcTFsoxv2_syAbr2DD3UAMCscvK_DjX1FOR61_-ozju86mNlPadB2-SGAMlGmd9-PNp-aJmQsheIfM115CJh-DJxKqTEh2v0I-b4gndqjlUAqYedrqBevvqPh4jXSicd6K5X4qZMX0PKiAzRIb3mLsI_Lp9ayfPGrcXbB-XnbehNX_78NvpRF-vFBcXLPybBmm0gbZhaWXpyKPjBUbBm3oXdvZlOFuAsXrZKri8dnaYOCBmoWii6ScQ",
+  "token_type": "bearer"
+}
+luigi@MSI:~$ curl -s -X POST "$BASE_URL/devices/register" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -d '{"device_name":"sensor-e2e","mac_address":"AA:BB:CC:DD:EE:FF","report_interval":60}' | jq .
+{
+  "message": "device.register event queued"
+}
+luigi@MSI:~$ DEVICE_RESPONSE=$(curl -s -X GET "$BASE_URL/devices/me" \
+  -H "Authorization: Bearer $ACCESS_TOKEN")
+
+echo "$DEVICE_RESPONSE" | jq .
+
+DEVICE_UUID=$(echo "$DEVICE_RESPONSE" | jq -r '.[0].device_uuid')
+
+[
+  {
+    "user_id": "8bcdce67-eab8-4a38-805f-e9987e8df0f7",
+    "device_name": "sensor-e2e",
+    "mac_address": "AA:BB:CC:DD:EE:FF",
+    "report_interval": 60,
+    "device_uuid": "cbfd7054-f71f-46f7-a759-162667b6ec91",
+    "status": "active"
+  }
+]
+luigi@MSI:~$ # Fase 2 caida del servicio y comprobacion de funcionalidad
+luigi@MSI:~$ curl -s -X POST "$BASE_URL/devices/register" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -d '{"device_name":"sensor-e2e_2","mac_address":"AA:BB:CC:DD:EE:FG","report_interval":60}' | jq .
+{
+  "message": "device.register event queued"
+}
+luigi@MSI:~$ curl -s -X GET "$BASE_URL/devices/me" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
+{
+  "detail": {
+    "detail": "Unexpected error"
+  }
+}
+luigi@MSI:~$ for i in 1 2 3 4 5; do
+  TEMP=$(echo "$i" | awk '{printf "%.1f", 20 + ($1-1) * 0.5}')
+  HUM=$((59 + i))
+  curl -s -X POST "$BASE_URL/registers/received" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $ACCESS_TOKEN" \
+    -d "{\"device_id\":\"$DEVICE_UUID\",\"time_procesing\":$((9+i)),\"values\":{\"temperature\":\"$TEMP\",\"humidity\":\"$HUM\"}}" | jq .
+done
+{
+  "message": "register.received event queued"
+}
+{
+  "message": "register.received event queued"
+}
+{
+  "message": "register.received event queued"
+}
+{
+  "message": "register.received event queued"
+}
+{
+  "message": "register.received event queued"
+}
+luigi@MSI:~$ curl -s -X GET "$BASE_URL/registers/$DEVICE_UUID?limit=10" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
+[
+  {
+    "id": "e6716214-100f-46d2-8922-38faec9e496a",
+    "device_id": "cbfd7054-f71f-46f7-a759-162667b6ec91",
+    "created_at": "2026-05-18T03:36:57.321000",
+    "time_procesing": 14,
+    "values": {
+      "temperature": "22.0",
+      "humidity": "64"
+    }
+  },
+  {
+    "id": "c195e961-2c2f-4766-9c7e-79cb2a526d56",
+    "device_id": "cbfd7054-f71f-46f7-a759-162667b6ec91",
+    "created_at": "2026-05-18T03:36:57.294000",
+    "time_procesing": 13,
+    "values": {
+      "temperature": "21.5",
+      "humidity": "63"
+    }
+  },
+  {
+    "id": "242abb4a-fee8-48d4-a76e-3919fdac4792",
+    "device_id": "cbfd7054-f71f-46f7-a759-162667b6ec91",
+    "created_at": "2026-05-18T03:36:57.273000",
+    "time_procesing": 12,
+    "values": {
+      "temperature": "21.0",
+      "humidity": "62"
+    }
+  },
+  {
+    "id": "e3edb185-6783-4c74-8bfa-c58d7c762459",
+    "device_id": "cbfd7054-f71f-46f7-a759-162667b6ec91",
+    "created_at": "2026-05-18T03:36:57.250000",
+    "time_procesing": 11,
+    "values": {
+      "temperature": "20.5",
+      "humidity": "61"
+    }
+  },
+  {
+    "id": "db01c26c-cbab-458b-a1f8-79a232e67563",
+    "device_id": "cbfd7054-f71f-46f7-a759-162667b6ec91",
+    "created_at": "2026-05-18T03:36:57.229000",
+    "time_procesing": 10,
+    "values": {
+      "temperature": "20.0",
+      "humidity": "60"
+    }
+  }
+]
+luigi@MSI:~$ curl -s -X POST "$BASE_URL/reports/$DEVICE_UUID/generate" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
+{
+  "message": "telemetry.report event queued"
+}
+luigi@MSI:~$ curl -s -X GET "$BASE_URL/reports/$DEVICE_UUID?limit=10" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
+[
+  {
+    "deviceId": "cbfd7054-f71f-46f7-a759-162667b6ec91",
+    "createdAt": "2026-05-18T03:37:09.048000",
+    "metricData": [
+      {
+        "device_name": "temperature",
+        "valueList": [
+          "22.0",
+          "21.5",
+          "21.0",
+          "20.5",
+          "20.0"
+        ],
+        "percentajeChange": -9.09,
+        "topValue": "22.0",
+        "mostFrequentValue": "22.0"
+      },
+      {
+        "device_name": "humidity",
+        "valueList": [
+          "64",
+          "63",
+          "62",
+          "61",
+          "60"
+        ],
+        "percentajeChange": -6.25,
+        "topValue": "64.0",
+        "mostFrequentValue": "64"
+      }
+    ]
+  }
+]
+luigi@MSI:~$ # Fase 3 servicio recuperado
+luigi@MSI:~$ curl -s -X GET "$BASE_URL/devices/me" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" | jq .
+[
+  {
+    "user_id": "8bcdce67-eab8-4a38-805f-e9987e8df0f7",
+    "device_name": "sensor-e2e",
+    "mac_address": "AA:BB:CC:DD:EE:FF",
+    "report_interval": 60,
+    "device_uuid": "cbfd7054-f71f-46f7-a759-162667b6ec91",
+    "status": "active"
+  },
+  {
+    "user_id": "8bcdce67-eab8-4a38-805f-e9987e8df0f7",
+    "device_name": "sensor-e2e_2",
+    "mac_address": "AA:BB:CC:DD:EE:FG",
+    "report_interval": 60,
+    "device_uuid": "0396afe0-9ef1-4314-afa1-846ec7a02693",
+    "status": "active"
+  }
+]
+

@@ -1,0 +1,102 @@
+name: Pytest — E2E Tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  pytest-e2e:
+    runs-on: ubuntu-latest
+    environment: workflows
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create .env file from secrets
+        run: |
+          {
+            echo "LOG_LEVEL=INFO"
+
+            echo "POSTGRES_AUTH_USER=${{ secrets.POSTGRES_AUTH_USER }}"
+            echo "POSTGRES_AUTH_PASSWORD=${{ secrets.POSTGRES_AUTH_PASSWORD }}"
+            echo "POSTGRES_AUTH_DB=${{ secrets.POSTGRES_AUTH_DB }}"
+            echo "POSTGRES_AUTH_DATABASE_URL=${{ secrets.POSTGRES_AUTH_DATABASE_URL }}"
+
+            echo "POSTGRES_DEVICE_USER=${{ secrets.POSTGRES_DEVICE_USER }}"
+            echo "POSTGRES_DEVICE_PASSWORD=${{ secrets.POSTGRES_DEVICE_PASSWORD }}"
+            echo "POSTGRES_DEVICE_DB=${{ secrets.POSTGRES_DEVICE_DB }}"
+            echo "POSTGRES_DEVICE_DATABASE_URL=${{ secrets.POSTGRES_DEVICE_DATABASE_URL }}"
+
+            echo "REDIS_AUTH_URL=redis://redis-auth:6379/0"
+            echo "REDIS_DEVICE_URL=redis://redis_device:6379/0"
+
+            echo "ACCESS_TOKEN_EXPIRE_MINUTES=15"
+            echo "REFRESH_TOKEN_EXPIRE_DAYS=7"
+
+            echo "AUTH_SERVICE_URL=http://auth-service:8001"
+            echo "CALL_SERVICE_URL=http://call-service:8002"
+            echo "DEVICE_SERVICE_URL=http://device-service:8003"
+            echo "REGISTER_SERVICE_URL=http://register-service:8005"
+            echo "TELEMETRY_SERVICE_URL=http://telemetry-service:8006"
+            echo "API_GATEWAY_URL=http://api-gateway:8000"
+
+            echo "INTERNAL_API_KEY=${{ secrets.INTERNAL_API_KEY }}"
+
+            echo "RABBITMQ_USER=${{ secrets.RABBITMQ_USER }}"
+            echo "RABBITMQ_PASSWORD=${{ secrets.RABBITMQ_PASSWORD }}"
+            echo "RABBITMQ_PORT=5672"
+            echo "RABBITMQ_URL=amqp://${{ secrets.RABBITMQ_USER }}:${{ secrets.RABBITMQ_PASSWORD }}@rabbitmq:5672/"
+
+            echo "MONGO_REGISTER_USER=${{ secrets.MONGO_REGISTER_USER }}"
+            echo "MONGO_REGISTER_PASSWORD=${{ secrets.MONGO_REGISTER_PASSWORD }}"
+            echo "MONGO_REGISTER_DB=${{ secrets.MONGO_REGISTER_DB }}"
+            echo "MONGO_REGISTER_URL=mongodb://${{ secrets.MONGO_REGISTER_USER }}:${{ secrets.MONGO_REGISTER_PASSWORD }}@mongo_register:27017/${{ secrets.MONGO_REGISTER_DB }}?authSource=admin"
+
+            echo "MONGO_NOTIFICATIONS_USER=${{ secrets.MONGO_NOTIFICATIONS_USER }}"
+            echo "MONGO_NOTIFICATIONS_PASSWORD=${{ secrets.MONGO_NOTIFICATIONS_PASSWORD }}"
+            echo "MONGO_NOTIFICATIONS_DB=${{ secrets.MONGO_NOTIFICATIONS_DB }}"
+            echo "MONGO_NOTIFICATIONS_URL=mongodb://${{ secrets.MONGO_NOTIFICATIONS_USER }}:${{ secrets.MONGO_NOTIFICATIONS_PASSWORD }}@mongo_notifications:27017/${{ secrets.MONGO_NOTIFICATIONS_DB }}?authSource=admin"
+
+            echo "MONGO_TELEMETRY_USER=${{ secrets.MONGO_TELEMETRY_USER }}"
+            echo "MONGO_TELEMETRY_PASSWORD=${{ secrets.MONGO_TELEMETRY_PASSWORD }}"
+            echo "MONGO_TELEMETRY_DB=${{ secrets.MONGO_TELEMETRY_DB }}"
+            echo "MONGO_TELEMETRY_URL=mongodb://${{ secrets.MONGO_TELEMETRY_USER }}:${{ secrets.MONGO_TELEMETRY_PASSWORD }}@mongo_telemetry:27017/${{ secrets.MONGO_TELEMETRY_DB }}?authSource=admin"
+
+            echo "EMAILJS_URL=${{ secrets.EMAILJS_URL }}"
+            echo "EMAILJS_SERVICE_ID=${{ secrets.EMAILJS_SERVICE_ID }}"
+            echo "EMAILJS_TEMPLATE_ID=${{ secrets.EMAILJS_TEMPLATE_ID }}"
+            echo "EMAILJS_PUBLIC_KEY=${{ secrets.EMAILJS_PUBLIC_KEY }}"
+            echo "EMAILJS_PRIVATE_KEY=${{ secrets.EMAILJS_PRIVATE_KEY }}"
+            
+            echo "SCHEDULER_INTERVAL_SECONDS=${{ secrets.SCHEDULER_INTERVAL_SECONDS }}"
+          } > .env
+
+          printf 'PRIVATE_KEY=%s\n' "${{ secrets.PRIVATE_KEY }}" >> .env
+          printf 'PUBLIC_KEY=%s\n' "${{ secrets.PUBLIC_KEY }}" >> .env
+          printf 'UUID_ENCRYPTION_KEY=%s\n' "${{ secrets.UUID_ENCRYPTION_KEY }}" >> .env
+
+      - name: Start services
+        run: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build --wait
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install test dependencies
+        run: pip install pytest requests
+
+      - name: Run E2E pytest tests
+        run: pytest .github/workflows/pytest_tests/test_e2e.py -v -s
+
+      - name: Print service logs on failure
+        if: failure()
+        run: docker compose logs api-gateway auth-service call-service device-service register-service telemetry-service
+
+      - name: Tear down services
+        if: always()
+        run: docker compose -f docker-compose.yml down -v

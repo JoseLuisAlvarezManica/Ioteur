@@ -1,0 +1,229 @@
+services:
+
+  postgres-auth:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_AUTH_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_AUTH_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_AUTH_DB}
+    volumes:
+      - pg_auth_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_AUTH_USER} -d ${POSTGRES_AUTH_DB}"]
+      interval: 20s
+      retries: 5
+  redis-auth:
+    image: redis:7-alpine
+    volumes:
+      - redis_auth_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 20s
+      retries: 5
+
+  postgres-device:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_DEVICE_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_DEVICE_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DEVICE_DB}
+    volumes:
+      - pg_device_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_DEVICE_USER} -d ${POSTGRES_DEVICE_DB}"]
+      interval: 20s
+      retries: 5
+
+  redis_device:
+    image: redis:7-alpine
+    volumes:
+      - redis_device_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 20s
+      retries: 5
+  
+  mongo_register:
+    image: mongo:8.2.7-noble
+    command: ["mongod", "--quiet"]
+    logging:
+      driver: "none"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_REGISTER_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_REGISTER_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_REGISTER_DB}
+    volumes:
+      - mongo_register_data:/data/db
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/27017' 2>/dev/null || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  mongo_notifications:
+    image: mongo:8.2.7-noble
+    command: ["mongod", "--quiet"]
+    logging:
+      driver: "none"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_NOTIFICATIONS_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_NOTIFICATIONS_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_NOTIFICATIONS_DB}
+    volumes:
+      - mongo_notifications_data:/data/db
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/27017' 2>/dev/null || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  mongo_telemetry:
+    image: mongo:8.2.7-noble
+    command: ["mongod", "--quiet"]
+    logging:
+      driver: "none"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_TELEMETRY_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_TELEMETRY_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_TELEMETRY_DB}
+    volumes:
+      - mongo_telemetry_data:/data/db
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/27017' 2>/dev/null || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    logging:
+      driver: "none"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbit log [{console,[{level,warning}]}]"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq/
+      - rabbitmq_log:/var/log/rabbitmq/
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
+      interval: 20s
+      retries: 10
+      start_period: 20s
+
+  api-gateway:
+    build: ./services/api-gateway
+    env_file: ${ENV_FILE:-.env}
+    restart: on-failure
+    depends_on:
+      auth-service:
+        condition: service_healthy
+      call-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 20s
+      retries: 10
+      start_period: 10s
+  
+  auth-service:
+    build: ./services/auth-service
+    env_file: ${ENV_FILE:-.env}
+    restart: on-failure
+    depends_on:
+      redis-auth:
+        condition: service_healthy
+      postgres-auth:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 20s
+      retries: 10
+      start_period: 10s
+
+  call-service:
+    build: ./services/call-service
+    env_file: ${ENV_FILE:-.env}
+    restart: on-failure
+    depends_on:
+      redis_device:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; exit(0) if urllib.request.urlopen('http://localhost:8002/health').status==200 else exit(1)"]
+      interval: 20s
+      retries: 3
+      start_period: 10s
+
+  device-service:
+    build: ./services/device-service
+    env_file: ${ENV_FILE:-.env}
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; exit(0) if urllib.request.urlopen('http://localhost:8003/health').status==200 else exit(1)"]
+      interval: 20s
+      retries: 3
+      start_period: 10s
+
+  notification-service:
+    build: ./services/notification-service
+    env_file: ${ENV_FILE:-.env}
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      mongo_notifications:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; exit(0) if urllib.request.urlopen('http://localhost:8004/health').status==200 else exit(1)"]
+      interval: 20s
+      retries: 3
+      start_period: 10s
+
+  register-service:
+    build: ./services/register-service
+    env_file: ${ENV_FILE:-.env}
+    restart: on-failure
+    depends_on:
+      mongo_register:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; exit(0) if urllib.request.urlopen('http://localhost:8005/health').status==200 else exit(1)"]
+      interval: 20s
+      retries: 3
+      start_period: 10s
+
+  telemetry-service:
+    build: ./services/telemetry-service
+    env_file: ${ENV_FILE:-.env}
+    restart: on-failure
+    depends_on:
+      mongo_telemetry:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; exit(0) if urllib.request.urlopen('http://localhost:8006/health').status==200 else exit(1)"]
+      interval: 20s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  pg_auth_data:
+  redis_auth_data:
+  pg_device_data:
+  redis_device_data:
+  mongo_register_data:
+  mongo_notifications_data:
+  mongo_telemetry_data:
+  rabbitmq_data:
+  rabbitmq_log:

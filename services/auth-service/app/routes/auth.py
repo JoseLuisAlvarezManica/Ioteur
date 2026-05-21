@@ -1,0 +1,471 @@
+import logging
+from datetime import datetime, timezone, timedelta
+from typing import Any, Annotated
+from uuid import uuid4
+
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func
+from fastapi import APIRouter, Depends, HTTPException, status, Header, Query
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from jose import JWTError
+import redis.asyncio as aioredis
+
+from ..db import get_db
+from ..config import settings
+from ..redis_client import get_redis
+
+from ..schemas import (
+    SignUp,
+    Login,
+    TokenResponse,
+    MeResponse,
+    UserUpdate,
+    UserSelfUpdate,
+    UserIdResponse,
+    UsersPageResponse,
+)
+
+
+from ..models import Users
+
+from ..encryption import (
+    hash_password,
+    verify_password,
+    create_access_token,
+    create_refresh_token,
+    decode_token,
+)
+from ..logging_config import request_id_var
+
+logger = logging.getLogger(__name__)
+
+bearer_scheme = HTTPBearer()
+
+db_dependency = Annotated[AsyncSession, Depends(get_db)]
+redis_dependency = Annotated[aioredis.Redis, Depends(get_redis)]
+
+
+async def _set_request_id(x_request_id: Annotated[str, Header()] = "-") -> None:
+    request_id_var.set(x_request_id)
+
+
+router = APIRouter(
+    prefix="/auth", tags=["auth"], dependencies=[Depends(_set_request_id)]
+)
+
+
+async def _create_user(form: SignUp, role: str, db: db_dependency):
+    logger.info(
+        "Attempt at creating user", extra={"event": "user_create", "status": "attempt"}
+    )
+    result = await db.execute(select(Users).where(Users.email == form.email))
+    scalar = result.scalar_one_or_none()
+
+    if scalar:
+        logger.info(
+            "Email already in system",
+            extra={"event": "user_create", "status": "conflict"},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Email already registered"
+        )
+
+    new_user = Users(
+        id=str(uuid4()),
+        name=form.name,
+        role=role,
+        email=form.email,
+        password_hash=hash_password(form.password),
+    )
+
+    db.add(new_user)
+    try:
+        await db.commit()
+    except Exception as exc:
+        logger.error(
+            "Failed to create user",
+            extra={"event": "user_create", "status": "error", "error": str(exc)},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Could not create user",
+        )
+    logger.info(
+        "User created successfully", extra={"event": "user_create", "status": "success"}
+    )
+    return {"detail": "User created successfully"}
+
+
+# Crud usuarios
+
+
+@router.post("/signup", status_code=status.HTTP_201_CREATED)
+async def signup(body: SignUp, db: db_dependency):
+    await _create_user(body, "user", db)
+
+
+@router.post("/admin/register", status_code=status.HTTP_201_CREATED)
+async def register_admin(body: SignUp, db: db_dependency):
+    await _create_user(body, "admin", db)
+
+
+@router.get(
+    "/user/",
+    status_code=status.HTTP_200_OK,
+    response_model=UsersPageResponse,
+)
+async def get_all_users(
+    db: db_dependency,
+    page: int = Query(default=1, ge=1, description="Page number"),
+    page_size: int = Query(default=10, ge=1, le=100, description="Items per page"),
+):
+    # Count total users
+    total_result = await db.execute(select(func.count()).select_from(Users))
+    total = total_result.scalar()
+
+    # Fetch paginated users
+    offset = (page - 1) * page_size
+    result = await db.execute(select(Users).offset(offset).limit(page_size))
+    users = result.scalars().all()
+
+    return UsersPageResponse(
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=(total + page_size - 1) // page_size,
+        users=[
+            UserIdResponse(id=u.id, name=u.name, email=u.email, role=u.role)
+            for u in users
+        ],
+    )
+
+
+@router.get(
+    "/user/by-email/{email}",
+    status_code=status.HTTP_200_OK,
+    response_model=UserIdResponse,
+)
+async def get_user_by_email(email: str, db: db_dependency):
+    result = await db.execute(select(Users).where(Users.email == email))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+    return UserIdResponse(id=user.id, name=user.name, email=user.email, role=user.role)
+
+
+@router.get(
+    "/user/{user_id}",
+    status_code=status.HTTP_200_OK,
+    response_model=UserIdResponse,
+)
+async def get_user_by_id(user_id: str, db: db_dependency):
+    result = await db.execute(select(Users).where(Users.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+    return UserIdResponse(id=user.id, name=user.name, email=user.email, role=user.role)
+
+
+@router.put("/user/{user_id}", status_code=status.HTTP_200_OK)
+async def update_user(user_id: str, body: UserUpdate, db: db_dependency):
+    result = await db.execute(select(Users).where(Users.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+    if body.name is not None:
+        user.name = body.name
+    if body.email is not None:
+        user.email = body.email
+    if body.password is not None:
+        from ..encryption import hash_password
+
+        user.password_hash = hash_password(body.password)
+    if body.role is not None:
+        user.role = body.role
+    try:
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Could not update user",
+        )
+    return {"detail": "User updated successfully"}
+
+
+@router.delete("/user/{user_id}", status_code=status.HTTP_200_OK)
+async def delete_user(user_id: str, db: db_dependency):
+    """
+    Elimina un usuario por ID. No requiere autenticación, debe ser protegida por otro servicio.
+    """
+    result = await db.execute(select(Users).where(Users.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+    await db.delete(user)
+    try:
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Could not delete user",
+        )
+    return {"detail": "User deleted successfully"}
+
+
+# Autorización (manejo y uso de tokens)
+
+
+@router.post("/login", status_code=status.HTTP_200_OK, response_model=TokenResponse)
+async def login(body: Login, db: db_dependency):
+    result = await db.execute(select(Users).where(Users.email == body.email))
+    user = result.scalar_one_or_none()
+
+    if not user or not verify_password(body.password, user.password_hash):
+        logger.warning(
+            "Invalid credentials", extra={"event": "login", "status": "failure"}
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials."
+        )
+
+    access_token = create_access_token(
+        name=user.name,
+        email=user.email,
+        role=user.role,
+        user_id=user.id,
+        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
+    refresh_token = create_refresh_token(
+        name=user.name,
+        email=user.email,
+        role=user.role,
+        user_id=user.id,
+        expires_delta=timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+    )
+
+    logger.info("Login successful", extra={"event": "login", "status": "success"})
+    return TokenResponse(access_token=access_token, refresh_token=refresh_token)
+
+
+async def _validate_bearer_token(
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    redis: aioredis.Redis = Depends(get_redis),
+) -> tuple[dict[str, Any], str]:
+    token = credentials.credentials
+    try:
+        payload = decode_token(token)
+    except JWTError as exc:
+        logger.warning(
+            "Token validation failed",
+            extra={"event": "token_validate", "status": "failure", "error": str(exc)},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
+        )
+
+    is_revoked = await redis.get(f"blacklist:{token}")
+    if is_revoked:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Token revoked"
+        )
+
+    return payload, token
+
+
+async def _blacklist_token(
+    token: str, payload: dict[str, Any], redis: aioredis.Redis
+) -> None:
+    exp = payload.get("exp")
+    if not isinstance(exp, (int, float)):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload"
+        )
+
+    ttl = max(int(exp - datetime.now(timezone.utc).timestamp()), 1)
+    await redis.setex(f"blacklist:{token}", ttl, "1")
+
+
+@router.post("/refresh", status_code=status.HTTP_200_OK, response_model=TokenResponse)
+async def refresh(
+    db: db_dependency,
+    redis: redis_dependency,
+    x_refresh_token: Annotated[str, Header()],
+    token_context: tuple[dict[str, Any], str] = Depends(_validate_bearer_token),
+):
+    payload, access_token = token_context
+
+    if payload.get("type") != "access":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Expected access token in Authorization header",
+        )
+
+    try:
+        refresh_payload = decode_token(x_refresh_token)
+    except JWTError as exc:
+        logger.warning(
+            "Refresh token validation failed",
+            extra={"event": "refresh", "status": "failure", "error": str(exc)},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
+        )
+
+    if refresh_payload.get("type") != "refresh":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Expected refresh token in X-Refresh-Token header",
+        )
+
+    is_revoked = await redis.get(f"blacklist:{x_refresh_token}")
+    if is_revoked:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token revoked"
+        )
+
+    if refresh_payload.get("sub") != payload.get("sub"):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Token subject mismatch"
+        )
+
+    result = await db.execute(select(Users).where(Users.id == refresh_payload["sub"]))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found"
+        )
+
+    await _blacklist_token(access_token, payload, redis)
+
+    new_access_token = create_access_token(
+        name=user.name,
+        email=user.email,
+        role=user.role,
+        user_id=user.id,
+        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
+
+    logger.info("Token refreshed", extra={"event": "refresh", "status": "success"})
+    return TokenResponse(access_token=new_access_token, refresh_token=x_refresh_token)
+
+
+@router.post("/logout", status_code=status.HTTP_200_OK)
+async def logout(
+    redis: redis_dependency,
+    x_refresh_token: Annotated[str, Header()],
+    token_context: tuple[dict[str, Any], str] = Depends(_validate_bearer_token),
+):
+    payload, token = token_context
+    await _blacklist_token(token, payload, redis)
+
+    try:
+        refresh_payload = decode_token(x_refresh_token)
+        if refresh_payload.get("type") == "refresh":
+            await _blacklist_token(x_refresh_token, refresh_payload, redis)
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Expected refresh token in X-Refresh-Token header",
+            )
+    except JWTError as exc:
+        logger.warning(
+            "Refresh token validation failed during logout",
+            extra={"event": "logout", "status": "failure", "error": str(exc)},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
+        )
+
+    logger.info("Logout successful", extra={"event": "logout", "status": "success"})
+    return {"detail": "Logged out successfully"}
+
+
+@router.get("/me", status_code=status.HTTP_200_OK, response_model=MeResponse)
+async def me(
+    db: db_dependency,
+    token_context: tuple[dict[str, Any], str] = Depends(_validate_bearer_token),
+):
+    payload, _ = token_context
+
+    if payload.get("type") != "access":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Expected access token"
+        )
+
+    result = await db.execute(select(Users).where(Users.id == payload["sub"]))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="User not found"
+        )
+
+    return MeResponse(name=user.name, email=user.email, role=user.role)
+
+
+@router.patch("/me", status_code=status.HTTP_200_OK)
+async def update_me(
+    body: UserSelfUpdate,
+    db: db_dependency,
+    token_context: tuple[dict[str, Any], str] = Depends(_validate_bearer_token),
+):
+    payload, _ = token_context
+
+    if payload.get("type") != "access":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Expected access token"
+        )
+
+    result = await db.execute(select(Users).where(Users.id == payload["sub"]))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
+    if body.name is not None:
+        user.name = body.name
+
+    if body.email is not None:
+        existing = await db.execute(select(Users).where(Users.email == body.email))
+        if existing.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail="Email already in use"
+            )
+        user.email = body.email
+
+    if body.new_password is not None:
+        if not verify_password(body.old_password, user.password_hash):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Current password is incorrect",
+            )
+        user.password_hash = hash_password(body.new_password)
+
+    try:
+        await db.commit()
+    except Exception as exc:
+        await db.rollback()
+        logger.error(
+            "Failed to update user profile",
+            extra={"event": "user_self_update", "status": "error", "error": str(exc)},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Could not update profile",
+        )
+
+    logger.info(
+        "User profile updated",
+        extra={"event": "user_self_update", "status": "success"},
+    )
+    return {"detail": "Profile updated successfully"}

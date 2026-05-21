@@ -1,0 +1,1 @@
+# Las pruebas se realizaron bajo un esquema en donde se enviaba el user UUID de manera manual. Esto ha cambiado para que api-gateway lo rellene a base del ACCESS_TOKEN. La coleccion de postman esta actualizada bajo el nuevo esquema.
