@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -42,6 +42,6 @@ async def read_device_by_id(device_id: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Device).where(Device.device_uuid == device_id))
     device = result.scalar_one_or_none()
     if not device:
-        return []
+        raise HTTPException(status_code=404, detail="Dispositivo no encontrado")
     return Get_Status_Response(status=device.status)
 
